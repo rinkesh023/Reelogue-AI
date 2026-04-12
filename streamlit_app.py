@@ -18,14 +18,6 @@ st.set_page_config(page_title="Reelogue", page_icon="🎬", layout="wide")
 
 st.markdown("""
 <style>
-/* Mimicking the dark sophisticated UI */
-[data-testid="stSidebar"] {
-    background-color: #121212;
-}
-</style>
-""", unsafe_allow_html=True)
-st.markdown("""
-<style>
 /* Push settings to the bottom exclusively in the sidebar */
 [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(5) {
     margin-top: 35vh;
@@ -100,12 +92,12 @@ with st.sidebar:
         char = "U"
         
     st.markdown(f"""
-    <div style="background-color: #1A1A1A; border: 1px solid #333; padding: 12px; border-radius: 12px; display: flex; align-items: center; margin-bottom: 30px;">
+    <div style="background-color: var(--secondary-background-color); border: 1px solid var(--border-color); padding: 12px; border-radius: 12px; display: flex; align-items: center; margin-bottom: 30px;">
         <div style="background-color: #3f2623; color: #ffa384; border-radius: 50%; width: 44px; height: 44px; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 20px; margin-right: 14px;">
             {char}
         </div>
         <div>
-            <div style="color: white; font-weight: 600; font-size: 16px;">{p_name}</div>
+            <div style="color: var(--text-color); font-weight: 600; font-size: 16px;">{p_name}</div>
             <div style="color: #ffc266; font-size: 13px;">Active Session</div>
         </div>
     </div>
