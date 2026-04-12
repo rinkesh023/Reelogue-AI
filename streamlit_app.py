@@ -218,9 +218,15 @@ elif nav == "Home":
     if st.button("Generate AI Picks"):
         if st.session_state.profile:
             with st.spinner("Generating highly personalized recommendations..."):
-                recs = recommendation_agent.get_recommendations(st.session_state.profile)
-                st.session_state.recommendations = recs
-                st.session_state.active_review = None 
+                try:
+                    recs = recommendation_agent.get_recommendations(st.session_state.profile)
+                    st.session_state.recommendations = recs
+                    st.session_state.active_review = None 
+                except Exception as e:
+                    if "429" in str(e) or "ResourceExhausted" in str(e):
+                        st.error("⏳ Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds and try again.")
+                    else:
+                        st.error(f"Error fetching recommendations: {e}")
         else:
             st.error("Please set a profile in Settings first!")
 
@@ -243,9 +249,15 @@ elif nav == "Home":
                     
                     if st.button("Review", key=f"pick_{row_idx}_{i}", use_container_width=True):
                         with st.spinner(f"Reviewing {rec.get('title')} across all platforms..."):
-                            review = review_agent.review_movie(str(rec.get('title')), str(rec.get('year')), st.session_state.profile)
-                            st.session_state.active_review = review
-                            st.session_state.judge_eval = None
+                            try:
+                                review = review_agent.review_movie(str(rec.get('title')), str(rec.get('year')), st.session_state.profile)
+                                st.session_state.active_review = review
+                                st.session_state.judge_eval = None
+                            except Exception as e:
+                                if "429" in str(e) or "ResourceExhausted" in str(e):
+                                    st.error("⏳ Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds and try again.")
+                                else:
+                                    st.error(f"Error running review: {e}")
                     
                     if st.button("➕ Watchlist", key=f"qadd_{row_idx}_{i}", use_container_width=True):
                         add_to_watchlist(rec.get('title'), str(rec.get('year')), rec.get('type', 'Movie'), "Want to Watch", 0, "", poster)
@@ -375,9 +387,14 @@ if st.session_state.search_query and search_query:
         except:
             t_title = st.session_state.search_query
             t_year = ""
-            
-        st.session_state.active_review = review_agent.review_movie(t_title, t_year, st.session_state.profile or UserProfile())
-        st.session_state.judge_eval = None
-        st.session_state.search_query = ""
-        st.session_state.global_search_active = True
-        st.rerun()
+            try:
+                st.session_state.active_review = review_agent.review_movie(t_title, t_year, st.session_state.profile or UserProfile())
+                st.session_state.judge_eval = None
+                st.session_state.search_query = ""
+                st.session_state.global_search_active = True
+                st.rerun()
+            except Exception as e:
+                if "429" in str(e) or "ResourceExhausted" in str(e):
+                    st.error("⏳ Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds and try again.")
+                else:
+                    st.error(f"Error analyzing film: {e}")
