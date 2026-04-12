@@ -374,27 +374,26 @@ if search_query:
     
 if st.session_state.search_query and search_query:
     with st.spinner(f"Scraping the web and evaluating '{st.session_state.search_query}'..."):
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        extraction_prompt = f"Extract the movie title and the year from this query: '{st.session_state.search_query}'. Return strictly JSON like {{\"title\": \"Movie Title\", \"year\": \"YYYY\"}}. If year is unknown, put an empty string."
-        resp = model.generate_content(extraction_prompt).text
         try:
+            genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            extraction_prompt = f"Extract the movie title and the year from this query: '{st.session_state.search_query}'. Return strictly JSON like {{\"title\": \"Movie Title\", \"year\": \"YYYY\"}}. If year is unknown, put an empty string."
+            resp = model.generate_content(extraction_prompt).text
+            
             import re
             json_match = re.search(r'\{.*\}', resp, re.DOTALL)
-            ext = json.loads(json_match.group(0))
+            ext = json.loads(json_match.group(0)) if json_match else {}
             t_title = ext.get('title', st.session_state.search_query)
             t_year = ext.get('year', "")
-        except:
-            t_title = st.session_state.search_query
-            t_year = ""
-            try:
-                st.session_state.active_review = review_agent.review_movie(t_title, t_year, st.session_state.profile or UserProfile())
-                st.session_state.judge_eval = None
+            
+            st.session_state.active_review = review_agent.review_movie(t_title, t_year, st.session_state.profile or UserProfile())
+            st.session_state.judge_eval = None
+            st.session_state.search_query = ""
+            st.session_state.global_search_active = True
+            st.rerun()
+        except Exception as e:
+            if "429" in str(e) or "ResourceExhausted" in str(e):
+                st.error("⏳ Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds and try again.")
                 st.session_state.search_query = ""
-                st.session_state.global_search_active = True
-                st.rerun()
-            except Exception as e:
-                if "429" in str(e) or "ResourceExhausted" in str(e):
-                    st.error("⏳ Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds and try again.")
-                else:
-                    st.error(f"Error analyzing film: {e}")
+            else:
+                st.error(f"Error analyzing film: {e}")
