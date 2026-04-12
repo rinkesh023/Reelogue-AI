@@ -173,7 +173,14 @@ def render_full_review_ui(review, is_search=False):
     with st.expander("🛡️ AI Reliability Audit (Verification)"):
         if st.session_state.judge_eval is None:
             with st.spinner("Running AI safety checks..."):
-                st.session_state.judge_eval = judge_agent.evaluate_review(review, st.session_state.profile or UserProfile())
+                try:
+                    st.session_state.judge_eval = judge_agent.evaluate_review(review, st.session_state.profile or UserProfile())
+                except Exception as e:
+                    if "429" in str(e) or "ResourceExhausted" in str(e):
+                        st.error("⏳ Google Gemini Free Tier Rate Limit Reached! Cannot run audit currently.")
+                    else:
+                        st.error(f"Error auditing review: {e}")
+                    st.session_state.judge_eval = {}
         judge = st.session_state.judge_eval
         if judge:
             st.metric("Internal Audit Score", f"{judge.get('overall_score', 0):.1f} / 5")
