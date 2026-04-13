@@ -115,8 +115,8 @@ def recommendations(body: dict):
         recs = get_recommendations(profile)
         return {"recommendations": recs}
     except Exception as e:
-        if "429" in str(e) or "ResourceExhausted" in str(e):
-            raise HTTPException(status_code=429, detail=f"Rate Limit: {str(e)}")
+        if "429" in str(e) or "RateLimit" in str(e):
+            raise HTTPException(status_code=429, detail=f"Groq API Rate Limit: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/review")
@@ -130,8 +130,8 @@ def review(req: ReviewRequest):
         result = review_movie(req.title, req.year, profile)
         return result
     except Exception as e:
-        if "429" in str(e) or "ResourceExhausted" in str(e):
-            raise HTTPException(status_code=429, detail=f"Rate Limit: {str(e)}")
+        if "429" in str(e) or "RateLimit" in str(e):
+            raise HTTPException(status_code=429, detail=f"Groq API Rate Limit: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/search")
@@ -142,8 +142,8 @@ def search(req: SearchRequest):
         result = agentic_search_loop(req.query, profile or UserProfile())
         return result
     except Exception as e:
-        if "429" in str(e) or "ResourceExhausted" in str(e):
-            raise HTTPException(status_code=429, detail=f"Rate Limit: {str(e)}")
+        if "429" in str(e) or "RateLimit" in str(e):
+            raise HTTPException(status_code=429, detail=f"Groq API Rate Limit: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/judge")
@@ -154,8 +154,8 @@ def judge(req: JudgeRequest):
         result = evaluate_review(req.review_data, profile or UserProfile())
         return result
     except Exception as e:
-        if "429" in str(e) or "ResourceExhausted" in str(e):
-            raise HTTPException(status_code=429, detail=f"Rate Limit: {str(e)}")
+        if "429" in str(e) or "RateLimit" in str(e):
+            raise HTTPException(status_code=429, detail=f"Groq API Rate Limit: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

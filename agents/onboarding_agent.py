@@ -1,6 +1,6 @@
 import os
 import json
-import google.generativeai as genai
+from groq import Groq
 from memory.user_profile import UserProfile
 
 ONBOARDING_SYSTEM_PROMPT = """You are Reelogue's friendly onboarding assistant. Your job is to have a short, fun conversation 
@@ -19,32 +19,37 @@ Cover these areas (spread across 5-6 turns max, never dump everything at once):
 
 IMPORTANT: When you have collected enough information (at least 4-5 of the above points), 
 end your final message with exactly this JSON block on its own line:
-PROFILE_COMPLETE: {"name":"...","favourite_genres":[],"favourite_films":[],"favourite_directors":[],
-"mood":"...","viewing_context":"...","content_type":"both","language_preference":"English",
-"disliked_genres":[],"streaming_services":[]}
+PROFILE_COMPLETE: {"name":"...","favourite_genres":[],"favourite_films":[],"favourite_directors":[],"mood":"...","viewing_context":"...","content_type":"both","language_preference":["English"],"disliked_genres":[],"streaming_services":[]}
 
 Fill in everything you learned. Omit PROFILE_COMPLETE if you still need more info.
 Be warm, brief, and cinephile-friendly. Use film references naturally."""
 
-
 def run_onboarding() -> UserProfile:
     """Run an interactive onboarding conversation and return a filled UserProfile."""
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash-lite",
-        system_instruction=ONBOARDING_SYSTEM_PROMPT,
-    )
-    chat = model.start_chat(history=[])
-
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    
     print("\n" + "="*50)
     print("  Welcome to REELOGUE")
     print("="*50 + "\n")
 
-    response = chat.send_message("Hello! Start the onboarding conversation.")
+    messages = [
+        {"role": "system", "content": ONBOARDING_SYSTEM_PROMPT},
+        {"role": "user", "content": "Hello! Start the onboarding conversation."}
+    ]
+
     profile_data = None
 
     while True:
-        reply = response.text
+        try:
+            response = client.chat.completions.create(
+                model="llama3-8b-8192",
+                messages=messages
+            )
+            reply = response.choices[0].message.content.strip()
+            messages.append({"role": "assistant", "content": reply})
+        except Exception as e:
+            print(f"Error calling Groq: {e}")
+            break
 
         if "PROFILE_COMPLETE:" in reply:
             clean_reply = reply.split("PROFILE_COMPLETE:")[0].strip()
@@ -62,8 +67,8 @@ def run_onboarding() -> UserProfile:
         user_input = input("You: ").strip()
         if not user_input:
             continue
-
-        response = chat.send_message(user_input)
+            
+        messages.append({"role": "user", "content": user_input})
 
     profile = UserProfile()
     if profile_data:

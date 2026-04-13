@@ -19,7 +19,7 @@ class UserProfile:
     ratings_history: list[dict] = field(default_factory=list)   # [{title, rating, feedback}]
 
     def to_prompt_context(self) -> str:
-        """Format profile as a context string for Gemini prompts."""
+        """Format profile as a context string for Groq prompts."""
         lines = []
         if self.name:
             lines.append(f"User name: {self.name}")

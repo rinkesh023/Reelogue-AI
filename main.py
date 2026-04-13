@@ -1,6 +1,6 @@
 """
 Reelogue — AI-powered movie & series review agent
-Powered by Gemini + Tavily + TMDB
+Powered by Groq + Tavily + TMDB
 """
 
 import os

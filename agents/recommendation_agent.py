@@ -1,49 +1,42 @@
 import os
 import json
-import google.generativeai as genai
+from groq import Groq
 from memory.user_profile import UserProfile
 from tools.omdb_fetch import fetch_omdb_data
 
-RECOMMENDATION_SYSTEM = """You are Reelogue's recommendation engine. Given a user taste profile, 
-suggest exactly 10 films or series that are a strong match.
-
-Return ONLY a valid JSON array, no other text:
+RECOMMENDATION_SYSTEM = """You are Reelogue's expert curation AI.
+Given the User's Taste Profile, generate exactly 10 highly personalised movie/series recommendations.
+Return ONLY valid JSON matching this exact structure:
 [
   {
-    "title": "Exact film title",
-    "year": "2024",
-    "type": "movie",
-    "reason": "2-sentence personalised reason referencing their specific tastes",
-    "taste_match": 92
+    "title": "Movie Title",
+    "year": 2023,
+    "match_score": 95,
+    "why_you_will_love_it": "1-2 sentence explanation tailored strictly to their profile"
   }
 ]
+"""
 
-Rules:
-- taste_match is 0-100, be honest (don't give everything 95+)
-- reason must directly reference something from their profile (e.g. "Since you loved Parasite's class tension...")
-- Mix well-known and hidden gems
-- Respect disliked genres strictly
-- If they want series, suggest series. If movies, suggest movies. If both, mix.
-- Prioritise titles likely available on their streaming services"""
-
-
-def get_recommendations(profile: UserProfile) -> list[dict]:
-    """Generate personalised recommendations using Gemini."""
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash-lite",
-        system_instruction=RECOMMENDATION_SYSTEM,
-    )
+def get_recommendations(profile: UserProfile) -> list:
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
     prompt = f"""User taste profile:
 {profile.to_prompt_context()}
 
 Suggest 10 personalised recommendations as JSON."""
 
-    response = model.generate_content(prompt)
-    raw = response.text.strip()
+    try:
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": RECOMMENDATION_SYSTEM},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        raw = response.choices[0].message.content.strip()
+    except Exception as e:
+        raw = "[]"
 
-    # Strip markdown code fences if present
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -67,6 +60,4 @@ Suggest 10 personalised recommendations as JSON."""
             
         return recs
     except Exception as e:
-        # Fallback: return empty list if parsing fails
-        print(f"[Warning] Could not parse recommendations JSON: {e}")
         return []

@@ -1,17 +1,12 @@
 import os
 import json
-import google.generativeai as genai
+from groq import Groq
 from tools.tavily_search import fetch_reviews
-from tools.tmdb_fetch import get_movie_full
 from memory.user_profile import UserProfile
 from agents.review_agent import review_movie
 
 SEARCH_SYSTEM_PROMPT = """You are an Agentic Search Assistant.
-Your goal is to extract the movie/series title from the user's query and use the provided tools to fetch its reviews.
-When asked to find and analyze a film:
-1. Call the `tavily_search_tool` with the query string to discover current trends or reviews.
-2. Based on the tool's response, produce a final JSON containing the extracted 'title' and 'year'.
-
+Your goal is to extract the absolute best movie/series title and year from the user's query and the search results context.
 CRITICAL INSTRUCTION: If there are multiple movies with the same name, or if the user's query is ambiguous, you must ALWAYS select the absolute newest/latest movie released (e.g. 2024 overrides 1989). 
 
 Return valid JSON:
@@ -22,40 +17,34 @@ Return valid JSON:
 If year is unknown, put an empty string. Keep it strictly JSON.
 """
 
-def tavily_search_tool(query: str) -> dict:
-    """Search the public web for current fashion trends or movie reviews."""
-    return fetch_reviews(query, "")
-
 def agentic_search_loop(query: str, profile: UserProfile) -> dict:
-    """
-    Implements an agentic loop where the model can call tools autonomously.
-    """
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    tavily_results = fetch_reviews(query, "")
     
-    # Passing the python function as a tool to the model
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash-lite",
-        system_instruction=SEARCH_SYSTEM_PROMPT,
-        tools=[tavily_search_tool]
-    )
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    
+    prompt = f"""User Query: {query}
+Tavily Search Context: {json.dumps(tavily_results)[:2000]}
+Extract the specific title and year in JSON."""
 
-    chat = model.start_chat(enable_automatic_function_calling=True)
-    response = chat.send_message(query)
-    
-    raw = response.text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip().rstrip("```").strip()
-    
+    try:
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": SEARCH_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        raw = response.choices[0].message.content.strip()
+    except Exception as e:
+        raw = "{}"
+
     try:
         ext = json.loads(raw)
         t_title = ext.get('title', query)
-        t_year = ext.get('year', "")
+        t_year = str(ext.get('year', ""))
     except Exception as e:
         t_title = query
         t_year = ""
 
-    # Once we have the data, hand off to the dedicated review agent to synthesize
     return review_movie(t_title, t_year, profile)

@@ -1,7 +1,7 @@
 import os
 import json
 import concurrent.futures
-import google.generativeai as genai
+from groq import Groq
 from tools.tavily_search import fetch_reviews, fetch_streaming_availability
 from tools.tmdb_fetch import get_movie_full
 from tools.omdb_fetch import fetch_omdb_data
@@ -35,22 +35,8 @@ reelogue_rating is your own weighted score (0-10) considering all sources.
 Be honest — not every film is a 9/10. Use decimal precision.
 Fill scores with 'N/A' if data was not found."""
 
-REVIEW_SYSTEM_FALLBACK = """If review data is sparse, still produce the full JSON.
-Use 'N/A' for missing scores and note the data gap in the summary."""
-
-
 def review_movie(title: str, year: str, profile: UserProfile) -> dict:
-    """
-    Full review pipeline:
-    1. Fetch metadata from TMDB
-    2. Fetch live reviews from all sources via Tavily  
-    3. Fetch streaming availability via Tavily
-    4. Synthesise everything with Gemini
-    Returns a complete review dict ready for display.
-    """
-
     print(f"  [1-3/4] Parallel processing APIs (TMDB, OMDb, Tavily, Watchmode)...")
-    
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         f_metadata = executor.submit(get_movie_full, title, year)
         f_omdb = executor.submit(fetch_omdb_data, title, year)
@@ -64,12 +50,8 @@ def review_movie(title: str, year: str, profile: UserProfile) -> dict:
         streaming = f_streaming.result()
         watchmode_sources = f_watchmode.result()
 
-    print(f"  [4/4] Synthesising with Gemini...")
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash-lite",
-        system_instruction=REVIEW_SYNTHESIS_SYSTEM,
-    )
+    print(f"  [4/4] Synthesising with Groq...")
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
     review_context = f"""Movie: {title} ({year})
 
@@ -77,7 +59,6 @@ User profile context:
 {profile.to_prompt_context()}
 
 Raw review data from Tavily searches:
-
 IMDb data:
 {raw_reviews.get('imdb', {}).get('answer', 'Not found')}
 {chr(10).join(raw_reviews.get('imdb', {}).get('snippets', []))}
@@ -106,14 +87,18 @@ Streaming availability (from Watchmode API):
 
 Synthesise this into the required JSON format."""
 
-    response = model.generate_content(review_context)
-    raw = response.text.strip()
-
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip().rstrip("```").strip()
+    try:
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": REVIEW_SYNTHESIS_SYSTEM},
+                {"role": "user", "content": review_context}
+            ],
+            response_format={"type": "json_object"}
+        )
+        raw = response.choices[0].message.content.strip()
+    except Exception as e:
+        raw = "{}"
 
     try:
         synthesis = json.loads(raw)
@@ -135,7 +120,6 @@ Synthesise this into the required JSON format."""
             "genres": [g.strip() for g in omdb_data.get("Genre", "").split(",")] if omdb_data.get("Genre") else []
         }
         
-    # Fallback to OMDb poster if TMDB failed/rejected
     if not final_metadata.get("poster_url") and omdb_data.get("Poster") and omdb_data.get("Poster") != "N/A":
         final_metadata["poster_url"] = omdb_data.get("Poster").replace("http://", "https://")
 

@@ -1,17 +1,17 @@
 import os
 import json
-import google.generativeai as genai
+from groq import Groq
 from memory.user_profile import UserProfile
 
 JUDGE_SYSTEM_PROMPT = """You are Reelogue's strict LLM-as-Judge Evaluator.
 Your task is to evaluate the quality of an AI-generated movie review and its relevance to a user's taste profile.
 
 Evaluate the provided review using the following rubric, assigning a score from 1-5 for each criterion:
-1. Review Accuracy: Are the aggregated scores (IMDb, RT, Metacritic) factually correct formatting and presented well? 
-2. Recommendation Relevance: Does this film genuinely match the user's taste profile? (Use context clues from the profile vs the movie's metadata)
-3. Synthesis Quality: Is the AI-written verdict coherent, specific, and non-generic?
-4. Source Coverage: Was data retrieved from multiple review sources? (Check for presence of multiple raw_sources/scores)
-5. Personalisation Depth: Does the review specifically reference things from the user's profile in the taste_match_note or best_for/avoid_if?
+1. Review Accuracy
+2. Recommendation Relevance
+3. Synthesis Quality
+4. Source Coverage
+5. Personalisation Depth
 
 You must return ONLY a valid JSON dictionary matching this exact structure:
 {
@@ -34,19 +34,11 @@ You must return ONLY a valid JSON dictionary matching this exact structure:
   "top_strength": "The best aspect of the review.",
   "top_improvement": "The biggest area for improvement."
 }
-
-Do not include any formatting like ```json or markdown. Provide STRICT evaluation with 1-5 integer scores. Calculate the overall_score as a float average of the 5 criteria."""
+"""
 
 def evaluate_review(review_result: dict, profile: UserProfile) -> dict:
-    """
-    Evaluates the quality of a generated review against a specific rubric.
-    """
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash-lite",
-        system_instruction=JUDGE_SYSTEM_PROMPT,
-    )
-
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    
     evaluation_context = f"""User Profile:
 {profile.to_prompt_context()}
 
@@ -55,34 +47,26 @@ Review Output to Evaluate:
 
 Please evaluate the review strictly and provide the JSON output."""
 
-    response = model.generate_content(evaluation_context)
-    raw = response.text.strip()
-
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip().rstrip("```").strip()
+    try:
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
+                {"role": "user", "content": evaluation_context}
+            ],
+            response_format={"type": "json_object"}
+        )
+        raw = response.choices[0].message.content.strip()
+    except Exception as e:
+        raw = "{}"
 
     try:
         evaluation = json.loads(raw)
         return evaluation
     except json.JSONDecodeError:
         return {
-            "scores": {
-                "review_accuracy": 1,
-                "recommendation_relevance": 1,
-                "synthesis_quality": 1,
-                "source_coverage": 1,
-                "personalisation_depth": 1
-            },
-            "reasoning": {
-                "review_accuracy": "Error parsing LLM response.",
-                "recommendation_relevance": "Error parsing LLM response.",
-                "synthesis_quality": "Error parsing LLM response.",
-                "source_coverage": "Error parsing LLM response.",
-                "personalisation_depth": "Error parsing LLM response."
-            },
+            "scores": {"review_accuracy": 1, "recommendation_relevance": 1, "synthesis_quality": 1, "source_coverage": 1, "personalisation_depth": 1},
+            "reasoning": {},
             "overall_score": 1.0,
             "summary": "Failed to parse judge output.",
             "top_strength": "N/A",
