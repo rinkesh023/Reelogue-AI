@@ -169,23 +169,23 @@ def render_full_review_ui(review, is_search=False):
     
     with st.expander("🛡️ AI Reliability Audit (Verification)"):
         if st.session_state.judge_eval is None:
-            with st.spinner("Running AI safety checks..."):
-                try:
-                    r = requests.post(f"{API_URL}/judge", json={
-                        "session_id": st.session_state.session_id,
-                        "review_data": review
-                    })
-                    if r.status_code == 200:
-                        st.session_state.judge_eval = r.json()
-                    elif r.status_code == 429:
-                        st.error(r.json().get("detail", "Wait 60s for Judge (Rate Limit)"))
-                        st.session_state.judge_eval = {}
-                    else:
-                        st.error(f"Error: {r.text}")
-                        st.session_state.judge_eval = {}
-                except Exception as e:
-                    st.error(f"Error auditing review: {e}")
-                    st.session_state.judge_eval = {}
+            if st.button("Run AI Safety Checks"):
+                with st.spinner("Running AI safety checks..."):
+                    try:
+                        r = requests.post(f"{API_URL}/judge", json={
+                            "session_id": st.session_state.session_id,
+                            "review_data": review
+                        })
+                        if r.status_code == 200:
+                            st.session_state.judge_eval = r.json()
+                            st.rerun()
+                        elif r.status_code == 429:
+                            st.error("Wait 60s for Judge (Rate Limit)")
+                        else:
+                            st.error(f"Error: {r.text}")
+                    except Exception as e:
+                        st.error(f"Error auditing review: {e}")
+        else:
         judge = st.session_state.judge_eval
         if judge:
             st.metric("Internal Audit Score", f"{judge.get('overall_score', 0):.1f} / 5")
