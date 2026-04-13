@@ -23,6 +23,10 @@ def init_db():
                 session_id TEXT,
                 title TEXT,
                 year TEXT,
+                m_type TEXT,
+                status TEXT,
+                user_rating INTEGER,
+                user_comment TEXT,
                 poster_url TEXT,
                 added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -39,16 +43,19 @@ def init_db():
             )
         ''')
 
-def add_to_watchlist(session_id, title, year, poster_url):
+def add_to_watchlist(session_id, title, year, m_type, status, user_rating, user_comment, poster_url):
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO watchlist (session_id, title, year, poster_url) VALUES (?, ?, ?, ?)",
-            (session_id, title, year, poster_url)
+            "INSERT INTO watchlist (session_id, title, year, m_type, status, user_rating, user_comment, poster_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (session_id, title, year, m_type, status, user_rating, user_comment, poster_url)
         )
 
-def get_watchlist(session_id):
+def get_watchlist(session_id, status_filter=None):
     with get_db() as conn:
-        rows = conn.execute("SELECT * FROM watchlist WHERE session_id = ? ORDER BY added_at DESC", (session_id,)).fetchall()
+        if status_filter:
+            rows = conn.execute("SELECT * FROM watchlist WHERE session_id = ? AND status = ? ORDER BY added_at DESC", (session_id, status_filter)).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM watchlist WHERE session_id = ? ORDER BY added_at DESC", (session_id,)).fetchall()
         return [dict(row) for row in rows]
 
 def remove_from_watchlist(session_id, title):

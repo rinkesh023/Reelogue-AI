@@ -15,6 +15,8 @@ load_dotenv()
 from memory.db import init_db, add_to_watchlist, get_watchlist, remove_from_watchlist, add_user_review, get_user_reviews
 from agents.recommendation_agent import get_recommendations
 from agents.review_agent import review_movie
+from agents.judge_agent import evaluate_review
+from agents.search_agent import agentic_search_loop
 from memory.user_profile import UserProfile
 
 app = FastAPI(title="Reelogue API", version="1.0.0")
@@ -63,10 +65,22 @@ class RatingInput(BaseModel):
     rating: int
     feedback: str = ""
 
+class SearchRequest(BaseModel):
+    session_id: str
+    query: str
+
+class JudgeRequest(BaseModel):
+    session_id: str
+    review_data: dict
+
 class WatchlistInput(BaseModel):
     session_id: str
     title: str
     year: str = ""
+    m_type: str = "Movie"
+    status: str = "Want to Watch"
+    user_rating: int = 0
+    user_comment: str = ""
     poster_url: str = ""
 
 
@@ -97,9 +111,13 @@ def recommendations(body: dict):
     if not profile:
         raise HTTPException(status_code=404, detail="Session not found. Create a profile first.")
 
-    recs = get_recommendations(profile)
-    return {"recommendations": recs}
-
+    try:
+        recs = get_recommendations(profile)
+        return {"recommendations": recs}
+    except Exception as e:
+        if "429" in str(e) or "ResourceExhausted" in str(e):
+            raise HTTPException(status_code=429, detail="Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds.")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/review")
 def review(req: ReviewRequest):
@@ -108,8 +126,37 @@ def review(req: ReviewRequest):
     if not profile:
         raise HTTPException(status_code=404, detail="Session not found.")
 
-    result = review_movie(req.title, req.year, profile)
-    return result
+    try:
+        result = review_movie(req.title, req.year, profile)
+        return result
+    except Exception as e:
+        if "429" in str(e) or "ResourceExhausted" in str(e):
+            raise HTTPException(status_code=429, detail="Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds.")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/search")
+def search(req: SearchRequest):
+    """Agentic search for a global query."""
+    try:
+        profile = sessions.get(req.session_id)
+        result = agentic_search_loop(req.query, profile or UserProfile())
+        return result
+    except Exception as e:
+        if "429" in str(e) or "ResourceExhausted" in str(e):
+            raise HTTPException(status_code=429, detail="Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds.")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/judge")
+def judge(req: JudgeRequest):
+    """Judge evaluation for an AI review."""
+    try:
+        profile = sessions.get(req.session_id)
+        result = evaluate_review(req.review_data, profile or UserProfile())
+        return result
+    except Exception as e:
+        if "429" in str(e) or "ResourceExhausted" in str(e):
+            raise HTTPException(status_code=429, detail="Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds.")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/rate")
@@ -124,12 +171,12 @@ def rate(data: RatingInput):
 
 @app.post("/watchlist")
 def add_watchlist(data: WatchlistInput):
-    add_to_watchlist(data.session_id, data.title, data.year, data.poster_url)
+    add_to_watchlist(data.session_id, data.title, data.year, data.m_type, data.status, data.user_rating, data.user_comment, data.poster_url)
     return {"status": "ok"}
 
 @app.get("/watchlist/{session_id}")
-def view_watchlist(session_id: str):
-    return {"watchlist": get_watchlist(session_id)}
+def view_watchlist(session_id: str, status: str = None):
+    return {"watchlist": get_watchlist(session_id, status)}
 
 @app.delete("/watchlist/{session_id}/{title}")
 def delete_watchlist(session_id: str, title: str):
