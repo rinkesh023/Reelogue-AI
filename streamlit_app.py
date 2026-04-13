@@ -1,17 +1,16 @@
 import os
-import sqlite3
 import streamlit as st
 import importlib
 from dotenv import load_dotenv
 from datetime import datetime
 import json
-import google.generativeai as genai
+import requests
+import uuid
 
 # Load environment variables
 load_dotenv()
 
-from memory.user_profile import UserProfile
-from agents import recommendation_agent, review_agent, judge_agent
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 # --- CSS INJECTIONS FOR UI ---
 st.set_page_config(page_title="Reelogue", page_icon="🎬", layout="wide")
@@ -27,40 +26,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- DATABASE SETUP ---
-DB_NAME = "reelogue.db"
-def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS watchlist
-                 (id INTEGER PRIMARY KEY, title TEXT, year TEXT, type TEXT, status TEXT, user_rating INTEGER, user_comment TEXT, poster_url TEXT, date_added TEXT)''')
-    conn.commit()
-    conn.close()
-
-init_db()
-
-def get_watchlist(status_filter=None):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    if status_filter:
-        c.execute('SELECT * FROM watchlist WHERE status=? ORDER BY id DESC', (status_filter,))
-    else:
-        c.execute('SELECT * FROM watchlist ORDER BY id DESC')
-    rows = c.fetchall()
-    conn.close()
-    return rows
-
-def add_to_watchlist(title, year, m_type, status, user_rating, user_comment, poster_url=""):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('INSERT INTO watchlist (title, year, type, status, user_rating, user_comment, poster_url, date_added) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-              (title, year, m_type, status, user_rating, user_comment, poster_url, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-    conn.commit()
-    conn.close()
-
 # --- INIT SESSION STATE ---
-if "profile" not in st.session_state:
-    st.session_state.profile = None
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+if "profile_data" not in st.session_state:
+    st.session_state.profile_data = None
 if "recommendations" not in st.session_state:
     st.session_state.recommendations = None
 if "active_review" not in st.session_state:
@@ -76,6 +46,34 @@ GENRES_LIST = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documenta
                "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", 
                "Romance", "Sci-Fi", "Thriller", "World Cinema", "Slow-burn"]
 
+# --- API HELPERS ---
+def get_watchlist(status_filter=None):
+    try:
+        url = f"{API_URL}/watchlist/{st.session_state.session_id}"
+        if status_filter:
+            url += f"?status={status_filter}"
+        r = requests.get(url)
+        if r.status_code == 200:
+            return r.json().get("watchlist", [])
+    except Exception as e:
+        st.error(f"Error connecting to backend: {e}")
+    return []
+
+def add_to_watchlist(title, year, m_type, status, user_rating, user_comment, poster_url=""):
+    try:
+        requests.post(f"{API_URL}/watchlist", json={
+            "session_id": st.session_state.session_id,
+            "title": title,
+            "year": year,
+            "m_type": m_type,
+            "status": status,
+            "user_rating": user_rating,
+            "user_comment": user_comment,
+            "poster_url": poster_url
+        })
+    except Exception as e:
+        st.error(f"Error connecting to backend: {e}")
+
 # --- SIDEBAR NAVIGATION ---
 with st.sidebar:
     st.markdown("""
@@ -84,8 +82,8 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    if st.session_state.profile:
-        p_name = st.session_state.profile.name or "User"
+    if st.session_state.profile_data:
+        p_name = st.session_state.profile_data.get("name") or "User"
         char = p_name[0].upper()
     else:
         p_name = "New User"
@@ -103,7 +101,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    # Updated text to matching Reelogue AI. The exact 5th item is offset via CSS to the bottom corner
     nav = st.radio("MENU", ["Home", "Reelogue AI", "Watchlist", "My Reviews", "Settings"], label_visibility="hidden")
 
 # --- HELPER: RENDER FULL REVIEW ---
@@ -174,12 +171,20 @@ def render_full_review_ui(review, is_search=False):
         if st.session_state.judge_eval is None:
             with st.spinner("Running AI safety checks..."):
                 try:
-                    st.session_state.judge_eval = judge_agent.evaluate_review(review, st.session_state.profile or UserProfile())
-                except Exception as e:
-                    if "429" in str(e) or "ResourceExhausted" in str(e):
-                        st.error("⏳ Google Gemini Free Tier Rate Limit Reached! Cannot run audit currently.")
+                    r = requests.post(f"{API_URL}/judge", json={
+                        "session_id": st.session_state.session_id,
+                        "review_data": review
+                    })
+                    if r.status_code == 200:
+                        st.session_state.judge_eval = r.json()
+                    elif r.status_code == 429:
+                        st.error(r.json().get("detail", "Wait 60s for Judge (Rate Limit)"))
+                        st.session_state.judge_eval = {}
                     else:
-                        st.error(f"Error auditing review: {e}")
+                        st.error(f"Error: {r.text}")
+                        st.session_state.judge_eval = {}
+                except Exception as e:
+                    st.error(f"Error auditing review: {e}")
                     st.session_state.judge_eval = {}
         judge = st.session_state.judge_eval
         if judge:
@@ -192,7 +197,6 @@ def render_full_review_ui(review, is_search=False):
 # PAGE DEFINITIONS
 # ----------------------------------------------------
 
-# If user submitted a global search via the chatbot, intercept traditional rendering!
 if st.session_state.global_search_active and st.session_state.active_review:
     st.title("Search Analysis")
     if st.button("⬅️ Back to Dashboard"):
@@ -200,13 +204,12 @@ if st.session_state.global_search_active and st.session_state.active_review:
         st.rerun()
     render_full_review_ui(st.session_state.active_review, is_search=True)
 
-# Normal Page Rendering
 elif nav == "Home":
     st.title("Home")
     
-    if st.session_state.profile:
-        name = st.session_state.profile.name or "User"
-        tastes = ", ".join(st.session_state.profile.favourite_genres[:3])
+    if st.session_state.profile_data:
+        name = st.session_state.profile_data.get("name", "User")
+        tastes = ", ".join(st.session_state.profile_data.get("favourite_genres", [])[:3])
         st.subheader(f"Good evening, {name}. What are you watching tonight?")
         st.markdown(f"<span style='color:#a3a3a3;'>Based on your taste — {tastes}. Updated just now.</span>", unsafe_allow_html=True)
         st.write("")
@@ -215,17 +218,19 @@ elif nav == "Home":
         st.write("Please configure your profile in Settings to get started.")
         
     if st.button("Generate AI Picks"):
-        if st.session_state.profile:
+        if st.session_state.profile_data:
             with st.spinner("Generating highly personalized recommendations..."):
                 try:
-                    recs = recommendation_agent.get_recommendations(st.session_state.profile)
-                    st.session_state.recommendations = recs
-                    st.session_state.active_review = None 
-                except Exception as e:
-                    if "429" in str(e) or "ResourceExhausted" in str(e):
-                        st.error("⏳ Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds and try again.")
+                    r = requests.post(f"{API_URL}/recommendations", json={"session_id": st.session_state.session_id})
+                    if r.status_code == 200:
+                        st.session_state.recommendations = r.json().get("recommendations", [])
+                        st.session_state.active_review = None 
+                    elif r.status_code == 429:
+                        st.error(r.json().get("detail", "Rate limit reached."))
                     else:
-                        st.error(f"Error fetching recommendations: {e}")
+                        st.error(f"Backend Error: {r.text}")
+                except Exception as e:
+                    st.error(f"Error fetching recommendations: {e}")
         else:
             st.error("Please set a profile in Settings first!")
 
@@ -249,14 +254,20 @@ elif nav == "Home":
                     if st.button("Review", key=f"pick_{row_idx}_{i}", use_container_width=True):
                         with st.spinner(f"Reviewing {rec.get('title')} across all platforms..."):
                             try:
-                                review = review_agent.review_movie(str(rec.get('title')), str(rec.get('year')), st.session_state.profile)
-                                st.session_state.active_review = review
-                                st.session_state.judge_eval = None
-                            except Exception as e:
-                                if "429" in str(e) or "ResourceExhausted" in str(e):
-                                    st.error("⏳ Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds and try again.")
+                                r = requests.post(f"{API_URL}/review", json={
+                                    "session_id": st.session_state.session_id,
+                                    "title": str(rec.get('title')),
+                                    "year": str(rec.get('year'))
+                                })
+                                if r.status_code == 200:
+                                    st.session_state.active_review = r.json()
+                                    st.session_state.judge_eval = None
+                                elif r.status_code == 429:
+                                    st.error(r.json().get("detail", "Rate limit reached."))
                                 else:
-                                    st.error(f"Error running review: {e}")
+                                    st.error("Error from backend.")
+                            except Exception as e:
+                                st.error(f"Error connecting to backend: {e}")
                     
                     if st.button("➕ Watchlist", key=f"qadd_{row_idx}_{i}", use_container_width=True):
                         add_to_watchlist(rec.get('title'), str(rec.get('year')), rec.get('type', 'Movie'), "Want to Watch", 0, "", poster)
@@ -274,16 +285,16 @@ elif nav == "Home":
         recent = get_watchlist("Watched")[:3]
         for r in recent:
             with st.container(border=True):
-                st.write(f"**{r[1]}** ({r[2]}) - {r[4]}")
-                if int(r[5] or 0) > 0:
-                    st.caption(f"{'⭐'*int(r[5] or 0)} - {r[6]}")
+                st.write(f"**{r.get('title')}** ({r.get('year')}) - {r.get('status')}")
+                if int(r.get('user_rating') or 0) > 0:
+                    st.caption(f"{'⭐'*int(r.get('user_rating') or 0)} - {r.get('user_comment')}")
     with c2:
         st.markdown("### Latest Additions")
         reviews = get_watchlist()[:3]
         for r in reviews:
             with st.container(border=True):
-                st.write(f"**{r[1]}** ({r[2]})")
-                st.caption(f"Status: {r[4]}")
+                st.write(f"**{r.get('title')}** ({r.get('year')})")
+                st.caption(f"Status: {r.get('status')}")
 
 elif nav == "Reelogue AI":
     st.title("Reelogue AI")
@@ -298,11 +309,11 @@ elif nav == "Watchlist":
             with st.container(border=True):
                 colA, colB = st.columns([1, 6])
                 with colA:
-                    if r[7]: 
-                        st.image(r[7], width=80)
+                    if r.get('poster_url'): 
+                        st.image(r.get('poster_url'), width=80)
                 with colB:
-                    st.markdown(f"#### {r[1]} ({r[2]})")
-                    st.caption(f"Added: {r[8]}")
+                    st.markdown(f"#### {r.get('title')} ({r.get('year')})")
+                    st.caption(f"Added: {r.get('added_at')}")
     with t2:
         with st.form("manual"):
             m_title = st.text_input("Title")
@@ -326,41 +337,49 @@ elif nav == "My Reviews":
         with st.container(border=True):
             colA, colB = st.columns([1, 6])
             with colA:
-                if r[7]: st.image(r[7], width=80)
+                if r.get('poster_url'): st.image(r.get('poster_url'), width=80)
             with colB:
-                st.markdown(f"#### {r[1]} ({r[2]})")
-                st.write(f"Rating: {'⭐'*int(r[5] or 0)}")
-                if r[6]:
-                    st.write(f"> {r[6]}")
+                st.markdown(f"#### {r.get('title')} ({r.get('year')})")
+                st.write(f"Rating: {'⭐'*int(r.get('user_rating') or 0)}")
+                if r.get('user_comment'):
+                    st.write(f"> {r.get('user_comment')}")
 
 elif nav == "Settings":
     st.title("Settings")
     
     st.header("Your Taste Profile")
     with st.form("onboarding_form"):
-        prof = st.session_state.profile
-        name = st.text_input("Your Name", value=prof.name if prof else "")
-        fav_genres = st.multiselect("Favourite Genres", GENRES_LIST, default=prof.favourite_genres if prof else [])
-        fav_films = st.text_input("Favourite Films/Series (comma-separated)", value=",".join(prof.favourite_films) if prof else "")
+        p_data = st.session_state.profile_data or {}
+        name = st.text_input("Your Name", value=p_data.get("name", ""))
+        fav_genres = st.multiselect("Favourite Genres", GENRES_LIST, default=p_data.get("favourite_genres", []))
+        fav_films = st.text_input("Favourite Films/Series (comma-separated)", value=",".join(p_data.get("favourite_films", [])))
         mood = st.selectbox("Current Mood", ["Want something light", "Need to cry", "Mind-bending", "Edge of my seat", "Inspiring"])
         viewing_context = st.selectbox("Viewing Context", ["Solo", "Date Night", "Family", "With Friends"])
         content_type = st.radio("Content Type", ["movies", "series", "both"], horizontal=True)
-        streaming = st.multiselect("Streaming Services", ["Netflix", "Amazon Prime", "Hulu", "Disney+", "Max", "Apple TV+"], default=prof.streaming_services if prof else [])
-        language_preference = st.multiselect("Regional Cinema Preference", ["Hollywood", "Bollywood", "South Indian Movies", "Global / World Cinema"], default=prof.language_preference if prof and getattr(prof, "language_preference", None) else [])
+        streaming = st.multiselect("Streaming Services", ["Netflix", "Amazon Prime", "Hulu", "Disney+", "Max", "Apple TV+"], default=p_data.get("streaming_services", []))
+        language_preference = st.multiselect("Regional Cinema Preference", ["Hollywood", "Bollywood", "South Indian Movies", "Global / World Cinema"], default=p_data.get("language_preference", []))
 
         if st.form_submit_button("Save Profile"):
-            profile = UserProfile(
-                name=name,
-                favourite_genres=fav_genres,
-                favourite_films=[f.strip() for f in fav_films.split(",") if f.strip()],
-                mood=mood,
-                viewing_context=viewing_context,
-                content_type=content_type,
-                streaming_services=streaming,
-                language_preference=language_preference
-            )
-            st.session_state.profile = profile
-            st.success("Profile saved globally! Head back to Home.")
+            new_profile = {
+                "session_id": st.session_state.session_id,
+                "name": name,
+                "favourite_genres": fav_genres,
+                "favourite_films": [f.strip() for f in fav_films.split(",") if f.strip()],
+                "mood": mood,
+                "viewing_context": viewing_context,
+                "content_type": content_type,
+                "streaming_services": streaming,
+                "language_preference": language_preference
+            }
+            try:
+                r = requests.post(f"{API_URL}/profile", json=new_profile)
+                if r.status_code == 200:
+                    st.session_state.profile_data = new_profile
+                    st.success("Profile saved dynamically to Backend! Head back to Home.")
+                else:
+                    st.error(f"Backend failed to save profile: {r.text}")
+            except Exception as e:
+                st.error(f"Connection error: {e}")
 
 # ----------------------------------------------------
 # GLOBAL AGENT SEARCH BAR (Appears Universal)
@@ -374,25 +393,20 @@ if search_query:
 if st.session_state.search_query and search_query:
     with st.spinner(f"Scraping the web and evaluating '{st.session_state.search_query}'..."):
         try:
-            genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-            model = genai.GenerativeModel("gemini-2.5-flash")
-            extraction_prompt = f"Extract the movie title and the year from this query: '{st.session_state.search_query}'. Return strictly JSON like {{\"title\": \"Movie Title\", \"year\": \"YYYY\"}}. If year is unknown, put an empty string."
-            resp = model.generate_content(extraction_prompt).text
-            
-            import re
-            json_match = re.search(r'\{.*\}', resp, re.DOTALL)
-            ext = json.loads(json_match.group(0)) if json_match else {}
-            t_title = ext.get('title', st.session_state.search_query)
-            t_year = ext.get('year', "")
-            
-            st.session_state.active_review = review_agent.review_movie(t_title, t_year, st.session_state.profile or UserProfile())
-            st.session_state.judge_eval = None
-            st.session_state.search_query = ""
-            st.session_state.global_search_active = True
-            st.rerun()
-        except Exception as e:
-            if "429" in str(e) or "ResourceExhausted" in str(e):
-                st.error("⏳ Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds and try again.")
+            r = requests.post(f"{API_URL}/search", json={
+                "session_id": st.session_state.session_id,
+                "query": st.session_state.search_query
+            })
+            if r.status_code == 200:
+                st.session_state.active_review = r.json()
+                st.session_state.judge_eval = None
+                st.session_state.search_query = ""
+                st.session_state.global_search_active = True
+                st.rerun()
+            elif r.status_code == 429:
+                st.warning(r.json().get("detail", "Rate limit reached."))
                 st.session_state.search_query = ""
             else:
-                st.error(f"Error analyzing film: {e}")
+                st.error(f"Server error: {r.text}")
+        except Exception as e:
+            st.error(f"Error analyzing film: {e}")
