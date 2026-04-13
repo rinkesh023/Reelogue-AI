@@ -116,7 +116,7 @@ def recommendations(body: dict):
         return {"recommendations": recs}
     except Exception as e:
         if "429" in str(e) or "ResourceExhausted" in str(e):
-            raise HTTPException(status_code=429, detail="Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds.")
+            raise HTTPException(status_code=429, detail=f"Rate Limit: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/review")
@@ -131,7 +131,7 @@ def review(req: ReviewRequest):
         return result
     except Exception as e:
         if "429" in str(e) or "ResourceExhausted" in str(e):
-            raise HTTPException(status_code=429, detail="Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds.")
+            raise HTTPException(status_code=429, detail=f"Rate Limit: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/search")
@@ -143,7 +143,7 @@ def search(req: SearchRequest):
         return result
     except Exception as e:
         if "429" in str(e) or "ResourceExhausted" in str(e):
-            raise HTTPException(status_code=429, detail="Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds.")
+            raise HTTPException(status_code=429, detail=f"Rate Limit: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/judge")
@@ -155,7 +155,7 @@ def judge(req: JudgeRequest):
         return result
     except Exception as e:
         if "429" in str(e) or "ResourceExhausted" in str(e):
-            raise HTTPException(status_code=429, detail="Google Gemini Free Tier Rate Limit Reached! Please wait 60 seconds.")
+            raise HTTPException(status_code=429, detail=f"Rate Limit: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
