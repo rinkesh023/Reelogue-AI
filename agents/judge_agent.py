@@ -69,11 +69,14 @@ Please evaluate the review strictly and provide the JSON output."""
             "top_improvement": "Fix Gemini limits"
         })
 
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip().rstrip("```").strip()
+    # Robust JSON extraction to handle Gemini adding conversational prose
+    start_idx = raw.find("{")
+    end_idx = raw.rfind("}")
+    
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        raw = raw[start_idx:end_idx+1]
+    else:
+        raw = "{}"
 
     try:
         evaluation = json.loads(raw)
