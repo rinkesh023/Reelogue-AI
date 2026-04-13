@@ -31,7 +31,7 @@ def run_onboarding() -> UserProfile:
     """Run an interactive onboarding conversation and return a filled UserProfile."""
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
     model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
+        model_name="gemini-flash-latest",
         system_instruction=ONBOARDING_SYSTEM_PROMPT,
     )
     chat = model.start_chat(history=[])

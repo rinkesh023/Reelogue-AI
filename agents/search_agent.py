@@ -32,7 +32,7 @@ def agentic_search_loop(query: str, profile: UserProfile) -> dict:
     
     # Passing the python function as a tool to the model
     model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
+        model_name="gemini-flash-latest",
         system_instruction=SEARCH_SYSTEM_PROMPT,
         tools=[tavily_search_tool]
     )
