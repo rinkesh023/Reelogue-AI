@@ -43,7 +43,7 @@ def evaluate_review(review_result: dict, profile: UserProfile) -> dict:
     """
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
     model = genai.GenerativeModel(
-        model_name="gemini-flash-latest",
+        model_name="gemini-2.5-flash-lite",
         system_instruction=JUDGE_SYSTEM_PROMPT,
     )
 
