@@ -38,11 +38,14 @@ Suggest 10 personalised recommendations as JSON."""
     except Exception as e:
         raw = "[]"
 
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip().rstrip("```").strip()
+    # Robust JSON extraction for arrays to handle conversational prose
+    start_idx = raw.find("[")
+    end_idx = raw.rfind("]")
+    
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        raw = raw[start_idx:end_idx+1]
+    else:
+        raw = "[]"
 
     try:
         recs = json.loads(raw)
@@ -56,7 +59,7 @@ Suggest 10 personalised recommendations as JSON."""
                 r["poster_url"] = "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80"
             return r
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             recs = list(executor.map(assign_poster, recs))
             
         return recs
