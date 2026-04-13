@@ -52,7 +52,7 @@ def review_movie(title: str, year: str, profile: UserProfile) -> dict:
     print(f"  [1-3/4] Parallel processing APIs (TMDB, OMDb, Tavily, Watchmode)...")
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        f_metadata = executor.submit(get_movie_full, title)
+        f_metadata = executor.submit(get_movie_full, title, year)
         f_omdb = executor.submit(fetch_omdb_data, title, year)
         f_reviews = executor.submit(fetch_reviews, title, year)
         f_streaming = executor.submit(fetch_streaming_availability, title, year)

@@ -5,15 +5,15 @@ TMDB_BASE = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 
 
-def search_movie(title: str) -> dict | None:
+def search_movie(title: str, year: str = "") -> dict | None:
     """Search TMDB for a movie and return the top result."""
     api_key = os.getenv("TMDB_API_KEY")
+    params = {"api_key": api_key, "query": title, "language": "en-US", "page": 1}
+    if year:
+        params["primary_release_year"] = year
+
     try:
-        resp = requests.get(
-            f"{TMDB_BASE}/search/movie",
-            params={"api_key": api_key, "query": title, "language": "en-US", "page": 1},
-            timeout=10,
-        )
+        resp = requests.get(f"{TMDB_BASE}/search/movie", params=params, timeout=10)
         resp.raise_for_status()
         results = resp.json().get("results", [])
         return results[0] if results else None
@@ -62,9 +62,9 @@ def get_movie_details(tmdb_id: int) -> dict:
     }
 
 
-def get_movie_full(title: str) -> dict | None:
+def get_movie_full(title: str, year: str = "") -> dict | None:
     """Search and return full details for a movie title."""
-    result = search_movie(title)
+    result = search_movie(title, year)
     if not result:
         return None
     return get_movie_details(result["id"])
