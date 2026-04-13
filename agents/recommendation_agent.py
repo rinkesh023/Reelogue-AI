@@ -11,7 +11,8 @@ Return ONLY valid JSON matching this exact structure:
   {
     "title": "Movie Title",
     "year": 2023,
-    "match_score": 95,
+    "taste_match": 95,
+    "type": "Movie",
     "why_you_will_love_it": "1-2 sentence explanation tailored strictly to their profile"
   }
 ]

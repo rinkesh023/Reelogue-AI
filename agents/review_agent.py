@@ -14,8 +14,8 @@ Given raw review data scraped from multiple sources, produce a structured JSON a
 Return ONLY valid JSON, no other text:
 
 {
-  "verdict": "One punchy sentence verdict (e.g. 'A masterclass in tension that demands a big screen')",
-  "summary": "3-4 sentences synthesising what critics and audiences agree/disagree on",
+  "verdict": "2-3 punchy, evocative sentences providing a definitive and highly detailed verdict on the movie based on all gathered data.",
+  "summary": "5-6 sentences synthesising what critics and audiences agree/disagree on, giving deeply comprehensive context.",
   "scores": {
     "imdb": "7.8/10",
     "rotten_tomatoes_critics": "94%",

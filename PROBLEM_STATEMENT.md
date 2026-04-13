@@ -19,5 +19,5 @@ A single prompt cannot handle this complexity effectively. An agentic pipeline w
 1. Builds a taste profile through conversation
 2. Recommends films matched to that profile
 3. Aggregates live review scores from all major platforms via Tavily search
-4. Synthesises a unified review using Gemini
-5. Evaluates its own output quality via an LLM-as-Judge verification step
+4. Synthesises a unified review using Groq Llama-3.1
+5. Evaluates its own output quality via a Gemini LLM-as-Judge verification step

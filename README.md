@@ -3,6 +3,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq-F55036?style=flat-square&logo=groq&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Gemini-8E75B2?style=flat-square&logo=googlegemini&logoColor=white)
 ![Tavily](https://img.shields.io/badge/Tavily-4285F4?style=flat-square&logo=google&logoColor=white)
 ![TMDB](https://img.shields.io/badge/TMDB-01B4E4?style=flat-square&logo=themoviedatabase&logoColor=white)
@@ -24,38 +25,39 @@ Reelogue is a fully agentic application that acts as your personalized film crit
 | --- | --- | --- |
 | **Language** | Python | Primary backend scripting. |
 | **UI** | Streamlit | Rapid interactive browser frontend prototyping. |
-| **AI Brain** | Gemini | Primary LLM orchestrator executing logic and formatting. |
+| **AI Brain (Generation)** | Groq Llama 3.1 | Primary LLM orchestrator executing logic and rapid JSON formatting. |
+| **AI Brain (Evaluation)** | Gemini 2.5 Flash | LLM-as-Judge executing rigorous audits against the user profile. |
 | **Search** | Tavily | Real-time scraper fetching web reviews across designated platforms. |
 | **Movie Data** | TMDB | Metadata engine for basic film facts and posters. |
 | **Review Data** | OMDb | Fast baseline score fallback and API metrics. |
 | **Streaming** | Watchmode API | Reliable lookup for streaming platforms globally. |
-| **Deployment**| Streamlit Cloud / Railway | Scalable hosting options for demo delivery. |
+| **Deployment**| Render.com | Scalable hosting backend for the FastAPI architecture. |
 
-## Architecture
+## Hybrid Architecture
 
 ```text
        [ User Profile / Form Inputs ]
                   |
                   v
 +------------------------------------+
-| 1. Onboarding Agent (Gemini Chat)  |
+| 1. Onboarding Agent (Groq Chat)    |
 +------------------------------------+
                   | (Generates UserProfile)
                   v
 +------------------------------------+
-| 2. Recommendation Agent (Gemini)   |
+| 2. Recommendation Agent (Groq)     |
 +------------------------------------+
-                  | (Outputs 5 Picks)
+                  | (Outputs 10 Picks)
                   v
 +------------------------------------+
-| 3. Review Agent (Gemini Synthesis) |
+| 3. Review Agent (Groq Synthesis)   |
 |  -> Parallel Tools: TMDB, OMDb     |
 |  -> Parallel Tools: Tavily, Watch  |
 +------------------------------------+
                   | (Produces Full Review)
                   v
 +------------------------------------+
-| 4. Judge Agent (LLM-as-Judge)      |
+| 4. Judge Agent (Gemini as Judge)   |
 +------------------------------------+
 ```
 
@@ -117,7 +119,8 @@ Reelogue is a fully agentic application that acts as your personalized film crit
 
 | Key | Where to Get It | Free Tier Limits |
 | --- | --- | --- |
-| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/) | 15 RPM / 1M TPM |
+| `GROQ_API_KEY` | [Groq Console](https://console.groq.com/keys) | 14,400 requests/day |
+| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/) | 20 requests/sec |
 | `TAVILY_API_KEY` | [Tavily Dashboard](https://tavily.com/) | 1,000 requests/month |
 | `TMDB_API_KEY` | [TMDB Developer](https://developer.themoviedb.org/) | 50 requests/sec |
 | `OMDB_API_KEY` | [OMDb API](http://www.omdbapi.com/apikey.aspx) | 1,000 requests/day |

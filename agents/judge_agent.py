@@ -3,15 +3,15 @@ import json
 import google.generativeai as genai
 from memory.user_profile import UserProfile
 
-JUDGE_SYSTEM_PROMPT = """You are Reelogue's strict LLM-as-Judge Evaluator.
-Your task is to evaluate the quality of an AI-generated movie review and its relevance to a user's taste profile.
+JUDGE_SYSTEM_PROMPT = """You are Reelogue's ultra-strict, ruthless LLM-as-Judge Auditor.
+Your task is to relentlessly evaluate an AI-generated movie review against the user's taste profile. You DO NOT hand out perfect 5/5 scores easily. You actively look for generic writing, missed taste connections, and robotic summaries.
 
-Evaluate the provided review using the following rubric, assigning a score from 1-5 for each criterion:
-1. Review Accuracy
-2. Recommendation Relevance
-3. Synthesis Quality
-4. Source Coverage
-5. Personalisation Depth
+Evaluate the provided review using the following rubric (1-5, where 3 is average, 4 is great, 5 is absolutely flawless):
+1. Review Accuracy: Are the scores coherent? Did it accurately summarize the consensus without inventing facts?
+2. Recommendation Relevance: Does this actually fit the user's Profile, or is it a generic recommendation?
+3. Synthesis Quality: Is the writing actually evocative, punchy, and human-like, or is it boring and robotic?
+4. Source Coverage: Did it synthesize multiple review perspectives (IMDb, RT, Metacritic) seamlessly?
+5. Personalisation Depth: Did it actively reference the user's specific "Mood" and "Viewing Context", or ignore them entirely?
 
 You must return ONLY a valid JSON dictionary matching this exact structure:
 {
