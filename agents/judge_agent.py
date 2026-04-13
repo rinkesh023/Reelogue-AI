@@ -62,11 +62,17 @@ Please evaluate the review strictly and provide the JSON output."""
     except Exception as e:
         raw = json.dumps({
             "scores": {"review_accuracy": 1, "recommendation_relevance": 1, "synthesis_quality": 1, "source_coverage": 1, "personalisation_depth": 1},
-            "reasoning": {},
+            "reasoning": {
+                "review_accuracy": f"API FAILED: {str(e)}",
+                "recommendation_relevance": "API Quota Exceeded.",
+                "synthesis_quality": "Check your Google AI Free Tier limit.",
+                "source_coverage": "Failed",
+                "personalisation_depth": "Failed"
+            },
             "overall_score": 1.0,
-            "summary": f"GEMINI API ERROR: {str(e)}",
-            "top_strength": "N/A",
-            "top_improvement": "Fix Gemini limits"
+            "summary": "API Limit Error",
+            "top_strength": f"GEMINI API ERROR: {str(e)[:50]}...",
+            "top_improvement": "Fix Gemini quotas"
         })
 
     # Robust JSON extraction to handle Gemini adding conversational prose
