@@ -48,7 +48,7 @@ class ProfileInput(BaseModel):
     mood: str = ""
     viewing_context: str = ""
     content_type: str = "both"
-    language_preference: str = "English"
+    language_preference: list[str] = []
     disliked_genres: list[str] = []
     streaming_services: list[str] = []
 
