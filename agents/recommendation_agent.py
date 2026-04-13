@@ -31,7 +31,7 @@ def get_recommendations(profile: UserProfile) -> list[dict]:
     """Generate personalised recommendations using Gemini."""
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
     model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
+        model_name="gemini-1.5-flash",
         system_instruction=RECOMMENDATION_SYSTEM,
     )
 
