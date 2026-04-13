@@ -12,6 +12,8 @@ When asked to find and analyze a film:
 1. Call the `tavily_search_tool` with the query string to discover current trends or reviews.
 2. Based on the tool's response, produce a final JSON containing the extracted 'title' and 'year'.
 
+CRITICAL INSTRUCTION: If there are multiple movies with the same name, or if the user's query is ambiguous, you must ALWAYS select the absolute newest/latest movie released (e.g. 2024 overrides 1989). 
+
 Return valid JSON:
 {
   "title": "Movie Title",
