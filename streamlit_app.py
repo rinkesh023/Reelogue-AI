@@ -185,7 +185,7 @@ def render_full_review_ui(review, is_search=False):
                             st.error(f"Error: {r.text}")
                     except Exception as e:
                         st.error(f"Error auditing review: {e}")
-        else:
+                        
         judge = st.session_state.judge_eval
         if judge:
             st.metric("Internal Audit Score", f"{judge.get('overall_score', 0):.1f} / 5")
