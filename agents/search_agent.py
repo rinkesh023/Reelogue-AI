@@ -39,6 +39,12 @@ Extract the specific title and year in JSON."""
     except Exception as e:
         raw = json.dumps({"title": f"GROQ SEARCH ERROR: {str(e)}", "year": ""})
 
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    raw = raw.strip().rstrip("```").strip()
+
     try:
         ext = json.loads(raw)
         t_title = ext.get('title', query)

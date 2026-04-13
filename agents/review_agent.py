@@ -100,6 +100,12 @@ Synthesise this into the required JSON format."""
     except Exception as e:
         raw = json.dumps({"verdict": f"GROQ API ERROR: {str(e)}", "summary": "API Call Failed"})
 
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    raw = raw.strip().rstrip("```").strip()
+
     try:
         synthesis = json.loads(raw)
     except json.JSONDecodeError:
