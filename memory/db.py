@@ -3,7 +3,7 @@ import json
 import os
 from contextlib import contextmanager
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "reelogue.db")
+DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(__file__), "..", "reelogue.db"))
 
 @contextmanager
 def get_db():
