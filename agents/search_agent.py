@@ -37,7 +37,7 @@ Extract the specific title and year in JSON."""
         )
         raw = response.choices[0].message.content.strip()
     except Exception as e:
-        raw = "{}"
+        raw = json.dumps({"title": f"GROQ SEARCH ERROR: {str(e)}", "year": ""})
 
     try:
         ext = json.loads(raw)

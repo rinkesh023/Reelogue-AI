@@ -98,7 +98,7 @@ Synthesise this into the required JSON format."""
         )
         raw = response.choices[0].message.content.strip()
     except Exception as e:
-        raw = "{}"
+        raw = json.dumps({"verdict": f"GROQ API ERROR: {str(e)}", "summary": "API Call Failed"})
 
     try:
         synthesis = json.loads(raw)
