@@ -67,7 +67,7 @@ def review_movie(title: str, year: str, profile: UserProfile) -> dict:
     print(f"  [4/4] Synthesising with Gemini...")
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="gemini-2.0-flash",
         system_instruction=REVIEW_SYNTHESIS_SYSTEM,
     )
 
