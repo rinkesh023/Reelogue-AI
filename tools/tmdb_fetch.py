@@ -6,29 +6,45 @@ TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 
 
 def search_movie(title: str, year: str = "") -> dict | None:
-    """Search TMDB for a movie and return the top result."""
+    """Search TMDB for a movie and return the top result. Falls back to TV search."""
     api_key = os.getenv("TMDB_API_KEY")
-    params = {"api_key": api_key, "query": title, "language": "en-US", "page": 1}
-    if year:
-        params["primary_release_year"] = year
+    if not api_key:
+        return None
 
+    # Try movie search first
     try:
+        params = {"api_key": api_key, "query": title, "language": "en-US", "page": 1}
+        if year:
+            params["primary_release_year"] = year
         resp = requests.get(f"{TMDB_BASE}/search/movie", params=params, timeout=10)
         resp.raise_for_status()
         results = resp.json().get("results", [])
-        return results[0] if results else None
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to connect to TMDB: {e}")
-        return None
+        if results:
+            return {"result": results[0], "media_type": "movie"}
+    except Exception as e:
+        print(f"TMDB movie search failed: {e}")
+
+    # Fallback to TV series search (catches Moon Knight, series, etc.)
+    try:
+        params = {"api_key": api_key, "query": title, "language": "en-US", "page": 1}
+        resp = requests.get(f"{TMDB_BASE}/search/tv", params=params, timeout=10)
+        resp.raise_for_status()
+        results = resp.json().get("results", [])
+        if results:
+            return {"result": results[0], "media_type": "tv"}
+    except Exception as e:
+        print(f"TMDB TV search failed: {e}")
+
+    return None
 
 
-def get_movie_details(tmdb_id: int) -> dict:
-    """Get full movie details including credits and videos."""
+def get_movie_details(tmdb_id: int, media_type: str = "movie") -> dict:
+    """Get full movie/TV details including credits and videos."""
     api_key = os.getenv("TMDB_API_KEY")
 
     try:
         resp = requests.get(
-            f"{TMDB_BASE}/movie/{tmdb_id}",
+            f"{TMDB_BASE}/{media_type}/{tmdb_id}",
             params={"api_key": api_key, "language": "en-US", "append_to_response": "credits,videos"},
             timeout=10,
         )
@@ -38,14 +54,18 @@ def get_movie_details(tmdb_id: int) -> dict:
         print(f"Failed to fetch details from TMDB: {e}")
         return {}
 
+    # Build poster URL — use OMDb as proxy source to avoid India CDN geo-block
+    poster_path = details.get("poster_path")
+    poster_url = f"{TMDB_IMAGE_BASE}{poster_path}" if poster_path else None
+
     return {
         "id": details.get("id"),
-        "title": details.get("title"),
+        "title": details.get("title") or details.get("name"),
         "overview": details.get("overview"),
-        "release_year": details.get("release_date", "")[:4],
+        "release_year": (details.get("release_date") or details.get("first_air_date") or "")[:4],
         "genres": [g["name"] for g in details.get("genres", [])],
         "runtime": details.get("runtime"),
-        "poster_url": f"{TMDB_IMAGE_BASE}{details['poster_path']}" if details.get("poster_path") else None,
+        "poster_url": poster_url,
         "backdrop_url": f"https://image.tmdb.org/t/p/w1280{details['backdrop_path']}" if details.get("backdrop_path") else None,
         "cast": [m["name"] for m in details.get("credits", {}).get("cast", [])[:5]],
         "director": next(
@@ -62,9 +82,16 @@ def get_movie_details(tmdb_id: int) -> dict:
     }
 
 
-def get_movie_full(title: str, year: str = "") -> dict | None:
-    """Search and return full details for a movie title."""
-    result = search_movie(title, year)
-    if not result:
+def fetch_tmdb_data(title: str, year: str = "") -> dict | None:
+    """Search and return full details for a movie or TV title."""
+    found = search_movie(title, year)
+    if not found:
         return None
-    return get_movie_details(result["id"])
+    result = found["result"]
+    media_type = found["media_type"]
+    return get_movie_details(result["id"], media_type)
+
+
+# Keep backward-compat alias used by review_agent etc.
+def get_movie_full(title: str, year: str = "") -> dict | None:
+    return fetch_tmdb_data(title, year)
