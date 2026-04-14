@@ -34,12 +34,18 @@ def get_chat_search_results(query: str) -> list:
     except Exception as e:
         raw = "[]"
 
-    # Robust JSON extraction for arrays
-    start_idx = raw.find("[")
-    end_idx = raw.rfind("]")
+    # Robust JSON extraction for arrays or single objects
+    start_idx_array = raw.find("[")
+    end_idx_array = raw.rfind("]")
     
-    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-        raw = raw[start_idx:end_idx+1]
+    start_idx_obj = raw.find("{")
+    end_idx_obj = raw.rfind("}")
+    
+    if start_idx_array != -1 and end_idx_array != -1 and end_idx_array > start_idx_array:
+        raw = raw[start_idx_array:end_idx_array+1]
+    elif start_idx_obj != -1 and end_idx_obj != -1 and end_idx_obj > start_idx_obj:
+        # Groq returned a single dictionary instead of an array. Wrap it in a list!
+        raw = "[" + raw[start_idx_obj:end_idx_obj+1] + "]"
     else:
         raw = "[]"
 

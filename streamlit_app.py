@@ -233,6 +233,10 @@ if st.session_state.global_search_active and (st.session_state.active_review or 
                                 st.session_state.active_review = r.json()
                                 st.session_state.judge_eval = None
                                 st.rerun()
+                            elif r.status_code == 429:
+                                st.error("Rate limit reached. Please wait a moment.")
+                            else:
+                                st.error(f"Error: Backend failed to generate review. Code {r.status_code}")
                     if st.button("➕ Watchlist", key=f"csqadd_{row_idx}_{i}", use_container_width=True):
                         add_to_watchlist(rec.get('title'), str(rec.get('year')), rec.get('type', 'Movie'), "Want to Watch", 0, "", poster)
                         st.toast("Added!")
