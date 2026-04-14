@@ -4,10 +4,13 @@ import concurrent.futures
 from groq import Groq
 from tools.omdb_fetch import fetch_omdb_data
 
-CHAT_SEARCH_SYSTEM = """You are Reelogue's intelligent conversational search agent.
-The user will ask you for movies based on an actor, director, theme, or mood (e.g. "movies by Nolan", "sci-fi from the 90s").
-Your job is to identify the best 5 movies that match their query.
-Return ONLY valid JSON matching this exact structure:
+CHAT_SEARCH_SYSTEM = """You are Reelogue's intelligent conversational movie discovery agent.
+For ANY user query — whether it's a movie title, actor, director, genre, or mood — you MUST:
+1. If the user gives a movie title (e.g. "RRR", "Dangal"): Return that movie PLUS 4 highly similar movies.
+2. If the user gives an actor/director (e.g. "Christopher Nolan"): Return their 5 most popular works.
+3. If the user gives a theme/mood: Return the 5 best matches.
+
+ALWAYS return EXACTLY 5 entries. NEVER return prose, explanations, or markdown. Return ONLY this exact JSON array:
 [
   {
     "title": "Movie Title",
@@ -16,8 +19,7 @@ Return ONLY valid JSON matching this exact structure:
     "type": "Movie",
     "why_you_will_love_it": "1-2 sentence explanation of why this matches their query"
   }
-]
-Do not return conversational text, only the array. Keep it to exactly 5 movies."""
+]"""
 
 def get_chat_search_results(query: str) -> list:
     client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -53,11 +55,29 @@ def get_chat_search_results(query: str) -> list:
         recs = json.loads(raw)
         
         def assign_poster(r):
-            omdb_info = fetch_omdb_data(r.get("title"), str(r.get("year", "")))
-            if omdb_info and omdb_info.get("Poster") and omdb_info.get("Poster") != "N/A":
-                r["poster_url"] = omdb_info.get("Poster").replace("http://", "https://")
-            else:
-                r["poster_url"] = "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80"
+            title = r.get("title", "")
+            year = str(r.get("year", ""))
+            poster = None
+            
+            # Try OMDb first
+            try:
+                omdb_info = fetch_omdb_data(title, year)
+                if omdb_info and omdb_info.get("Poster") and omdb_info.get("Poster") != "N/A":
+                    poster = omdb_info.get("Poster").replace("http://", "https://")
+            except Exception:
+                pass
+            
+            # Fallback to TMDB if OMDb returned nothing
+            if not poster:
+                try:
+                    from tools.tmdb_fetch import fetch_tmdb_data
+                    tmdb_info = fetch_tmdb_data(title, year)
+                    if tmdb_info and tmdb_info.get("poster_url"):
+                        poster = tmdb_info["poster_url"]
+                except Exception:
+                    pass
+            
+            r["poster_url"] = poster or "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80"
             return r
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:

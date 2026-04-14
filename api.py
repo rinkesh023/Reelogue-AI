@@ -122,9 +122,8 @@ def recommendations(body: dict):
 @app.post("/review")
 def review(req: ReviewRequest):
     """Get a full review for a specific title."""
-    profile = sessions.get(req.session_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Session not found.")
+    # Profile is optional — use blank profile if no session exists (e.g. chat_search flow)
+    profile = sessions.get(req.session_id) or UserProfile()
 
     try:
         result = review_movie(req.title, req.year, profile)
