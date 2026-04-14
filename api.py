@@ -16,7 +16,7 @@ from memory.db import init_db, add_to_watchlist, get_watchlist, remove_from_watc
 from agents.recommendation_agent import get_recommendations
 from agents.review_agent import review_movie
 from agents.judge_agent import evaluate_review
-from agents.search_agent import agentic_search_loop
+from agents.chat_search_agent import get_chat_search_results
 from memory.user_profile import UserProfile
 
 app = FastAPI(title="Reelogue API", version="1.0.0")
@@ -134,13 +134,12 @@ def review(req: ReviewRequest):
             raise HTTPException(status_code=429, detail=f"Groq API Rate Limit: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/search")
-def search(req: SearchRequest):
-    """Agentic search for a global query."""
+@app.post("/chat_search")
+def chat_search(req: SearchRequest):
+    """Conversational search returning a list of movies to review."""
     try:
-        profile = sessions.get(req.session_id)
-        result = agentic_search_loop(req.query, profile or UserProfile())
-        return result
+        result = get_chat_search_results(req.query)
+        return {"results": result}
     except Exception as e:
         if "429" in str(e) or "RateLimit" in str(e):
             raise HTTPException(status_code=429, detail=f"Groq API Rate Limit: {str(e)}")

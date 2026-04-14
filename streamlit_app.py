@@ -41,6 +41,8 @@ if "search_query" not in st.session_state:
     st.session_state.search_query = ""
 if "global_search_active" not in st.session_state:
     st.session_state.global_search_active = False
+if "chat_results" not in st.session_state:
+    st.session_state.chat_results = None
 
 GENRES_LIST = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", 
                "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", 
@@ -197,12 +199,43 @@ def render_full_review_ui(review, is_search=False):
 # PAGE DEFINITIONS
 # ----------------------------------------------------
 
-if st.session_state.global_search_active and st.session_state.active_review:
-    st.title("Search Analysis")
+if st.session_state.global_search_active and (st.session_state.active_review or st.session_state.chat_results):
+    st.title("Search & Analysis")
     if st.button("⬅️ Back to Dashboard"):
         st.session_state.global_search_active = False
+        st.session_state.chat_results = None
+        st.session_state.active_review = None
         st.rerun()
-    render_full_review_ui(st.session_state.active_review, is_search=True)
+        
+    if st.session_state.active_review:
+        render_full_review_ui(st.session_state.active_review, is_search=True)
+    elif st.session_state.chat_results:
+        st.write(f"### Found these results for '{st.session_state.search_query}':")
+        chunk_size = 5
+        for row_idx in range(0, len(st.session_state.chat_results), chunk_size):
+            chunk = st.session_state.chat_results[row_idx:row_idx + chunk_size]
+            cols = st.columns(chunk_size)
+            for i, rec in enumerate(chunk):
+                with cols[i]:
+                    poster = rec.get("poster_url", "")
+                    if poster: st.image(poster, use_container_width=True)
+                    st.markdown(f"**{rec.get('title')}**")
+                    st.caption(f"{rec.get('year')} • {rec.get('type')}")
+                    st.info(rec.get('why_you_will_love_it', 'Great match!'))
+                    
+                    if st.button("Review", key=f"cs_{row_idx}_{i}", use_container_width=True):
+                        with st.spinner(f"Reviewing {rec.get('title')}..."):
+                            r = requests.post(f"{API_URL}/review", json={
+                                "session_id": st.session_state.session_id,
+                                "title": str(rec.get('title')), "year": str(rec.get('year'))
+                            })
+                            if r.status_code == 200:
+                                st.session_state.active_review = r.json()
+                                st.session_state.judge_eval = None
+                                st.rerun()
+                    if st.button("➕ Watchlist", key=f"csqadd_{row_idx}_{i}", use_container_width=True):
+                        add_to_watchlist(rec.get('title'), str(rec.get('year')), rec.get('type', 'Movie'), "Want to Watch", 0, "", poster)
+                        st.toast("Added!")
 
 elif nav == "Home":
     st.title("Home")
@@ -385,22 +418,22 @@ elif nav == "Settings":
 # GLOBAL AGENT SEARCH BAR (Appears Universal)
 # ----------------------------------------------------
 st.markdown("<br><br>", unsafe_allow_html=True)
-search_query = st.chat_input("Ask Reelogue AI to find and analyze ANY film and series...")
+search_query = st.chat_input("Ask Reelogue AI for movies by director, actor, genre, or mood...")
 
 if search_query:
     st.session_state.search_query = search_query
     
 if st.session_state.search_query and search_query:
-    with st.spinner(f"Scraping the web and evaluating '{st.session_state.search_query}'..."):
+    with st.spinner(f"Finding best matches for '{st.session_state.search_query}'..."):
         try:
-            r = requests.post(f"{API_URL}/search", json={
+            r = requests.post(f"{API_URL}/chat_search", json={
                 "session_id": st.session_state.session_id,
                 "query": st.session_state.search_query
             })
             if r.status_code == 200:
-                st.session_state.active_review = r.json()
+                st.session_state.chat_results = r.json().get("results", [])
+                st.session_state.active_review = None
                 st.session_state.judge_eval = None
-                st.session_state.search_query = ""
                 st.session_state.global_search_active = True
                 st.rerun()
             elif r.status_code == 429:
