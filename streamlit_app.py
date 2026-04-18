@@ -18,7 +18,7 @@ st.set_page_config(page_title="Reelogue", page_icon="🎬", layout="wide")
 # =====================================================================
 # PREMIUM CSS DESIGN SYSTEM
 # =====================================================================
-st.markdown('<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">', unsafe_allow_html=True)
+st.markdown('<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">', unsafe_allow_html=True)
 try:
     with open("static/style.css", encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
@@ -254,9 +254,9 @@ def render_full_review_ui(review, is_search=False):
     st.markdown("---")
     c1, c2 = st.columns(2)
     with c1:
-        st.markdown(f'<div class="section-label">Best For</div><div class="glass-pill">✅ {synth.get("best_for", "N/A")}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="section-label">Best For</div><div class="badge-best">✅ {synth.get("best_for", "N/A")}</div>', unsafe_allow_html=True)
     with c2:
-        st.markdown(f'<div class="section-label">Avoid If</div><div class="glass-pill">⚠️ {synth.get("avoid_if", "N/A")}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="section-label">Avoid If</div><div class="badge-avoid">⚠️ {synth.get("avoid_if", "N/A")}</div>', unsafe_allow_html=True)
 
     # -- Trailer --
     if trailer:
@@ -350,14 +350,14 @@ elif nav == "Home":
         else: greeting = "Good evening"
         
         st.markdown(f"""
-        <div class="dashboard-hero">
+        <div class="greeting-banner">
             <h2>{greeting}, {name} 👋</h2>
             <p>What are you watching tonight? Your taste — {tastes}.</p>
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
-        <div class="dashboard-hero">
+        <div class="greeting-banner">
             <h2>Welcome to Reelogue 🎬</h2>
             <p>Your AI-powered cinema companion. Head to Settings to build your taste profile.</p>
         </div>
@@ -448,7 +448,7 @@ elif nav == "Home":
 
 elif nav == "Reelogue AI":
     st.markdown("""
-    <div class="dashboard-hero">
+    <div class="greeting-banner">
         <h2>Reelogue AI 🤖</h2>
         <p>Ask me to find movies by director, actor, genre, or mood. Use the search bar below.</p>
     </div>
