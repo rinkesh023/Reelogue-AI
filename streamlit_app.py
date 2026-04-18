@@ -12,22 +12,22 @@ load_dotenv()
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 
-# --- CSS INJECTIONS FOR UI ---
+# --- PAGE CONFIG ---
 st.set_page_config(page_title="Reelogue", page_icon="🎬", layout="wide")
 
-st.markdown("""
-<style>
-/* Push settings to the bottom exclusively in the sidebar */
-[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(5) {
-    margin-top: 35vh;
-    border-top: 1px solid #333;
-    border-radius: 0;
-}
-</style>
-""", unsafe_allow_html=True)
+# =====================================================================
+# PREMIUM CSS DESIGN SYSTEM
+# =====================================================================
+st.markdown('<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">', unsafe_allow_html=True)
+try:
+    with open("static/style.css", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+except Exception:
+    pass
 
-# --- INIT SESSION STATE (persistent across refreshes) ---
-# Use URL query params to keep session_id stable across page refreshes
+# =====================================================================
+# INIT SESSION STATE (persistent across refreshes)
+# =====================================================================
 _params = st.query_params
 if "sid" in _params:
     _session_id = _params["sid"]
@@ -60,13 +60,15 @@ if st.session_state.profile_data is None:
         if _r.status_code == 200:
             st.session_state.profile_data = _r.json().get("profile")
     except Exception:
-        pass  # Backend may not be running yet; silently continue
+        pass
 
 GENRES_LIST = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", 
                "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", 
                "Romance", "Sci-Fi", "Thriller", "World Cinema", "Slow-burn"]
 
-# --- API HELPERS ---
+# =====================================================================
+# API HELPERS
+# =====================================================================
 def get_watchlist(status_filter=None):
     try:
         url = f"{API_URL}/watchlist/{st.session_state.session_id}"
@@ -94,13 +96,51 @@ def add_to_watchlist(title, year, m_type, status, user_rating, user_comment, pos
     except Exception as e:
         st.error(f"Error connecting to backend: {e}")
 
-# --- SIDEBAR NAVIGATION ---
+
+def render_radial_score(label, value, max_val=10, size=90):
+    """Generate an SVG radial progress bar for scores."""
+    try:
+        num = float(str(value).replace('%','').strip())
+    except (ValueError, TypeError):
+        return f'<div class="score-radial"><span style="color:var(--text-muted);font-size:12px;">{label}</span><span style="color:var(--text-secondary);font-size:18px;font-weight:700;">{value}</span></div>'
+    
+    pct = min(num / max_val, 1.0) if max_val > 0 else 0
+    r = 36
+    circ = 2 * 3.14159 * r
+    dash = circ * pct
+    gap = circ - dash
+    
+    # Color based on percentage
+    if pct >= 0.75:
+        color = "#10B981"
+    elif pct >= 0.5:
+        color = "#F59E0B"
+    else:
+        color = "#EF4444"
+    
+    svg = f'''
+    <div class="score-radial">
+        <svg width="{size}" height="{size}" viewBox="0 0 {size} {size}">
+            <circle cx="{size//2}" cy="{size//2}" r="{r}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="6"/>
+            <circle cx="{size//2}" cy="{size//2}" r="{r}" fill="none" stroke="{color}" stroke-width="6"
+                stroke-dasharray="{dash} {gap}" stroke-linecap="round"
+                transform="rotate(-90 {size//2} {size//2})"
+                style="transition: stroke-dasharray 1s ease-out;">
+                <animate attributeName="stroke-dasharray" from="0 {circ}" to="{dash} {gap}" dur="1s" fill="freeze"/>
+            </circle>
+            <text x="{size//2}" y="{size//2 + 1}" text-anchor="middle" dominant-baseline="middle"
+                fill="{color}" font-size="16" font-weight="700" font-family="Plus Jakarta Sans, sans-serif">{value}</text>
+        </svg>
+        <span style="color:var(--text-muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">{label}</span>
+    </div>'''
+    return svg
+
+
+# =====================================================================
+# SIDEBAR NAVIGATION
+# =====================================================================
 with st.sidebar:
-    st.markdown("""
-    <div style="font-family: Georgia, serif; font-size: 32px; font-style: italic; color: #ff7f50; padding-bottom: 24px;">
-        Reelogue
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="logo-text">Reelogue</div>', unsafe_allow_html=True)
     
     if st.session_state.profile_data:
         p_name = st.session_state.profile_data.get("name") or "User"
@@ -110,25 +150,28 @@ with st.sidebar:
         char = "U"
         
     st.markdown(f"""
-    <div style="background-color: var(--secondary-background-color); border: 1px solid var(--border-color); padding: 12px; border-radius: 12px; display: flex; align-items: center; margin-bottom: 30px;">
-        <div style="background-color: #3f2623; color: #ffa384; border-radius: 50%; width: 44px; height: 44px; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 20px; margin-right: 14px;">
-            {char}
-        </div>
+    <div class="user-card">
+        <div class="user-avatar">{char}</div>
         <div>
-            <div style="color: var(--text-color); font-weight: 600; font-size: 16px;">{p_name}</div>
-            <div style="color: #ffc266; font-size: 13px;">Active Session</div>
+            <div class="user-info-name">{p_name}</div>
+            <div class="user-info-status">● Active Session</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
     nav = st.radio("MENU", ["Home", "Reelogue AI", "Watchlist", "My Reviews", "Settings"], label_visibility="hidden")
-    
+
+    # Clear global search if user clicks a different nav item
     if "last_nav" not in st.session_state:
         st.session_state.last_nav = nav
     if nav != st.session_state.last_nav:
         st.session_state.global_search_active = False
         st.session_state.last_nav = nav
-# --- HELPER: RENDER FULL REVIEW ---
+
+
+# =====================================================================
+# HELPER: RENDER FULL REVIEW (PREMIUM)
+# =====================================================================
 def render_full_review_ui(review, is_search=False):
     meta = review.get("metadata", {})
     synth = review.get("synthesis", {})
@@ -136,9 +179,9 @@ def render_full_review_ui(review, is_search=False):
     year = meta.get('release_year', 'N/A')
     trailer = meta.get('trailer_key')
     
-    st.divider()
-    st.header(f"{title} ({year})")
+    st.markdown("---")
     
+    # -- Hero Section --
     colA, colB = st.columns([1, 2])
     with colA:
         poster = meta.get("poster_url")
@@ -153,45 +196,75 @@ def render_full_review_ui(review, is_search=False):
                 st.success("Saved!")
                 
     with colB:
-        st.write(f"**Director:** {meta.get('director', 'N/A')}")
+        st.markdown(f"## {title}")
+        st.caption(f"{year} • Directed by {meta.get('director', 'N/A')}")
         if meta.get('genres'):
-            st.write(f"**Genres:** {', '.join(meta.get('genres'))}")
-        st.metric("Reelogue Verdict Score", synth.get("reelogue_rating", "N/A"))
-        st.info(f"**Verdict:** {synth.get('verdict', 'N/A')}")
+            genre_html = " ".join([f'<span style="display:inline-block;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#C4B5FD;padding:4px 12px;border-radius:50px;font-size:12px;font-weight:500;margin:2px;">{g}</span>' for g in meta.get('genres')])
+            st.markdown(genre_html, unsafe_allow_html=True)
         
+        st.write("")
+        verdict_score = synth.get("reelogue_rating", "N/A")
+        st.markdown(f'''
+        <div style="background:linear-gradient(135deg, rgba(139,92,246,0.15), rgba(6,182,212,0.1)); border:1px solid rgba(139,92,246,0.25); border-radius:16px; padding:20px; margin:12px 0;">
+            <div style="color:var(--text-muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">Reelogue Verdict</div>
+            <div style="font-size:32px;font-weight:800;background:linear-gradient(135deg,#8B5CF6,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:4px 0;">{verdict_score}/10</div>
+            <div style="color:var(--text-secondary);font-size:14px;font-style:italic;">"{synth.get('verdict', 'N/A')}"</div>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+    # -- Aggregated Scores — Radial Progress Bars --
     st.markdown("---")
-    st.subheader("Aggregated Review Scores")
-    score_cols = st.columns(5)
+    st.markdown('<div class="section-label">Aggregated Review Scores</div>', unsafe_allow_html=True)
     scores = synth.get("scores", {})
-    with score_cols[0]: st.metric("IMDb", scores.get("imdb", "N/A"))
-    with score_cols[1]: st.metric("RT Critics", scores.get("rotten_tomatoes_critics", "N/A"))
-    with score_cols[2]: st.metric("RT Audience", scores.get("rotten_tomatoes_audience", "N/A"))
-    with score_cols[3]: st.metric("Metacritic", scores.get("metacritic", "N/A"))
-    with score_cols[4]: st.metric("Letterboxd", scores.get("letterboxd", "N/A"))
+    
+    score_items = [
+        ("IMDb", scores.get("imdb", "N/A"), 10),
+        ("RT Critics", scores.get("rotten_tomatoes_critics", "N/A"), 100),
+        ("RT Audience", scores.get("rotten_tomatoes_audience", "N/A"), 100),
+        ("Metacritic", scores.get("metacritic", "N/A"), 100),
+        ("Letterboxd", scores.get("letterboxd", "N/A"), 5),
+    ]
+    
+    cols = st.columns(5)
+    for idx, (label, val, mx) in enumerate(score_items):
+        with cols[idx]:
+            st.markdown(render_radial_score(label, val, mx), unsafe_allow_html=True)
+    
     st.markdown("---")
     
-    st.subheader("Summary")
+    # -- Summary, Critics, Audience --
+    st.markdown('<div class="section-label">Summary</div>', unsafe_allow_html=True)
     st.write(synth.get('summary', 'N/A'))
     
-    st.subheader("Critic Consensus")
-    st.write(synth.get('critic_consensus', 'N/A'))
+    c_crit, c_aud = st.columns(2)
+    with c_crit:
+        st.markdown('<div class="section-label">Critic Consensus</div>', unsafe_allow_html=True)
+        st.write(synth.get('critic_consensus', 'N/A'))
+    with c_aud:
+        st.markdown('<div class="section-label">Audience Take</div>', unsafe_allow_html=True)
+        st.write(synth.get('audience_take', 'N/A'))
     
-    st.subheader("Audience Take")
-    st.write(synth.get('audience_take', 'N/A'))
+    st.markdown("---")
     
-    st.subheader("Streaming Availability")
+    # -- Streaming --
+    st.markdown('<div class="section-label">Streaming Availability</div>', unsafe_allow_html=True)
     st.write(review.get('streaming_raw', 'N/A'))
     
+    # -- Best For / Avoid If — Pill Badges --
+    st.markdown("---")
     c1, c2 = st.columns(2)
     with c1:
-        st.success(f"**Best For:**\n\n{synth.get('best_for', 'N/A')}")
+        st.markdown(f'<div class="section-label">Best For</div><div class="badge-best">✅ {synth.get("best_for", "N/A")}</div>', unsafe_allow_html=True)
     with c2:
-        st.error(f"**Avoid If:**\n\n{synth.get('avoid_if', 'N/A')}")
+        st.markdown(f'<div class="section-label">Avoid If</div><div class="badge-avoid">⚠️ {synth.get("avoid_if", "N/A")}</div>', unsafe_allow_html=True)
 
+    # -- Trailer --
     if trailer:
-        st.subheader("Trailer")
+        st.markdown("---")
+        st.markdown('<div class="section-label">Trailer</div>', unsafe_allow_html=True)
         st.video(f"https://www.youtube.com/watch?v={trailer}")
     
+    # -- Judge Evaluation --
     with st.expander("🛡️ AI Reliability Audit (Verification)"):
         if st.session_state.judge_eval is None:
             if st.button("Run AI Safety Checks"):
@@ -213,16 +286,18 @@ def render_full_review_ui(review, is_search=False):
                         
         judge = st.session_state.judge_eval
         if judge:
-            st.metric("Internal Audit Score", f"{judge.get('overall_score', 0):.1f} / 5")
+            st.markdown(render_radial_score("Audit Score", f"{judge.get('overall_score', 0):.1f}", 5, 100), unsafe_allow_html=True)
             st.write(f"**Top Strength:** {judge.get('top_strength', 'N/A')}")
-            for crit, label in [("review_accuracy", "Accuracy Check"), ("recommendation_relevance", "Relevance Check"), ("synthesis_quality", "Synthesis Integrity")]:
+            for crit, label in [("review_accuracy", "Accuracy"), ("recommendation_relevance", "Relevance"), ("synthesis_quality", "Synthesis")]:
                 st.progress(judge.get("scores", {}).get(crit, 0) / 5.0, text=f"{label}: {judge.get('reasoning', {}).get(crit, '')}")
 
-# ----------------------------------------------------
+
+# =====================================================================
 # PAGE DEFINITIONS
-# ----------------------------------------------------
+# =====================================================================
 
 if st.session_state.global_search_active and (st.session_state.active_review or st.session_state.chat_results):
+    st.markdown(f'<div class="section-label">Search & Analysis</div>', unsafe_allow_html=True)
     st.title("Search & Analysis")
     if st.button("⬅️ Back to Dashboard"):
         st.session_state.global_search_active = False
@@ -233,7 +308,7 @@ if st.session_state.global_search_active and (st.session_state.active_review or 
     if st.session_state.active_review:
         render_full_review_ui(st.session_state.active_review, is_search=True)
     elif st.session_state.chat_results:
-        st.write(f"### Found these results for '{st.session_state.search_query}':")
+        st.markdown(f"### Results for *'{st.session_state.search_query}'*")
         chunk_size = 5
         for row_idx in range(0, len(st.session_state.chat_results), chunk_size):
             chunk = st.session_state.chat_results[row_idx:row_idx + chunk_size]
@@ -265,19 +340,30 @@ if st.session_state.global_search_active and (st.session_state.active_review or 
                         st.toast("Added!")
 
 elif nav == "Home":
-    st.title("Home")
-    
+    # -- Greeting Banner (animated mesh gradient) --
     if st.session_state.profile_data:
         name = st.session_state.profile_data.get("name", "User")
         tastes = ", ".join(st.session_state.profile_data.get("favourite_genres", [])[:3])
-        st.subheader(f"Good evening, {name}. What are you watching tonight?")
-        st.markdown(f"<span style='color:#a3a3a3;'>Based on your taste — {tastes}. Updated just now.</span>", unsafe_allow_html=True)
-        st.write("")
-    else:
-        st.subheader("Welcome to Reelogue.")
-        st.write("Please configure your profile in Settings to get started.")
+        hour = datetime.now().hour
+        if hour < 12: greeting = "Good morning"
+        elif hour < 17: greeting = "Good afternoon"
+        else: greeting = "Good evening"
         
-    if st.button("Generate AI Picks"):
+        st.markdown(f"""
+        <div class="greeting-banner">
+            <h2>{greeting}, {name} 👋</h2>
+            <p>What are you watching tonight? Your taste — {tastes}.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div class="greeting-banner">
+            <h2>Welcome to Reelogue 🎬</h2>
+            <p>Your AI-powered cinema companion. Head to Settings to build your taste profile.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    if st.button("✨ Generate AI Picks", use_container_width=False):
         if st.session_state.profile_data:
             with st.spinner("Generating highly personalized recommendations..."):
                 try:
@@ -295,8 +381,7 @@ elif nav == "Home":
             st.error("Please set a profile in Settings first!")
 
     if st.session_state.recommendations:
-        st.markdown("### AI picks for you")
-        # Split into chunks of 5 for multiple rows
+        st.markdown('<div class="section-label">AI Picks For You</div>', unsafe_allow_html=True)
         chunk_size = 5
         for row_idx in range(0, len(st.session_state.recommendations), chunk_size):
             chunk = st.session_state.recommendations[row_idx:row_idx + chunk_size]
@@ -337,34 +422,45 @@ elif nav == "Home":
     if st.session_state.active_review and not st.session_state.global_search_active:
         render_full_review_ui(st.session_state.active_review, is_search=False)
 
-    st.divider()
+    st.markdown("---")
 
+    # -- Recent Activity Panels --
     c1, c_space, c2 = st.columns([1, 0.1, 1])
     with c1:
-        st.markdown("### Recently watched")
+        st.markdown('<div class="section-label">Recently Watched</div>', unsafe_allow_html=True)
         recent = get_watchlist("Watched")[:3]
+        if not recent:
+            st.caption("No watched films yet.")
         for r in recent:
             with st.container(border=True):
-                st.write(f"**{r.get('title')}** ({r.get('year')}) - {r.get('status')}")
+                st.write(f"**{r.get('title')}** ({r.get('year')})")
                 if int(r.get('user_rating') or 0) > 0:
-                    st.caption(f"{'⭐'*int(r.get('user_rating') or 0)} - {r.get('user_comment')}")
+                    st.caption(f"{'⭐'*int(r.get('user_rating') or 0)} — {r.get('user_comment')}")
     with c2:
-        st.markdown("### Latest Additions")
+        st.markdown('<div class="section-label">Latest Additions</div>', unsafe_allow_html=True)
         reviews = get_watchlist()[:3]
+        if not reviews:
+            st.caption("No items in watchlist yet.")
         for r in reviews:
             with st.container(border=True):
                 st.write(f"**{r.get('title')}** ({r.get('year')})")
                 st.caption(f"Status: {r.get('status')}")
 
 elif nav == "Reelogue AI":
-    st.title("Reelogue AI")
-    st.write("Instant Universal Search: Ask Reelogue AI to find and review any film and series.")
+    st.markdown("""
+    <div class="greeting-banner">
+        <h2>Reelogue AI 🤖</h2>
+        <p>Ask me to find movies by director, actor, genre, or mood. Use the search bar below.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 elif nav == "Watchlist":
     st.title("Watchlist")
-    t1, t2 = st.tabs(["Want to Watch", "Manual Add File"])
+    t1, t2 = st.tabs(["📌 Want to Watch", "✍️ Manual Add"])
     with t1:
         items = get_watchlist("Want to Watch")
+        if not items:
+            st.info("Your watchlist is empty. Add films from the Home page or via AI search!")
         for r in items:
             with st.container(border=True):
                 colA, colB = st.columns([1, 6])
@@ -407,7 +503,7 @@ elif nav == "My Reviews":
 elif nav == "Settings":
     st.title("Settings")
     
-    st.header("Your Taste Profile")
+    st.markdown('<div class="section-label">Your Taste Profile</div>', unsafe_allow_html=True)
     with st.form("onboarding_form"):
         p_data = st.session_state.profile_data or {}
         name = st.text_input("Your Name", value=p_data.get("name", ""))
@@ -435,64 +531,55 @@ elif nav == "Settings":
                 r = requests.post(f"{API_URL}/profile", json=new_profile)
                 if r.status_code == 200:
                     st.session_state.profile_data = new_profile
-                    st.success("Profile saved dynamically to Backend! Head back to Home.")
+                    st.success("Profile saved! Head back to Home.")
                 else:
                     st.error(f"Backend failed to save profile: {r.text}")
             except Exception as e:
                 st.error(f"Connection error: {e}")
 
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- SHARE SESSION (cross-device access) ---
-    st.header("📱 Access on Another Device")
-    st.write("Share this link to open your session (with all your data) on any device:")
-    _app_base_url = os.getenv("STREAMLIT_URL", "https://your-app-name.streamlit.app")
-    share_url = f"{_app_base_url}?sid={st.session_state.session_id}"
-    st.code(share_url, language=None)
-    st.caption("Anyone with this link can view and modify your watchlist & profile.")
+    with st.expander("📱 Cross-Device Access"):
+        st.write("Share this link to access your session from any device:")
+        _app_base_url = os.getenv("STREAMLIT_URL", "https://your-app-name.streamlit.app")
+        share_url = f"{_app_base_url}?sid={st.session_state.session_id}"
+        st.code(share_url, language=None)
+        st.caption("Anyone with this link can view and modify your watchlist & profile.")
 
-    st.markdown("---")
+    with st.expander("⚠️ Advanced Options (Reset & New Session)"):
+        st.warning("These actions will affect your current session data permanently.")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔴 Delete All Data", type="primary", use_container_width=True):
+                try:
+                    r = requests.delete(f"{API_URL}/reset/{st.session_state.session_id}")
+                    if r.status_code == 200:
+                        st.session_state.profile_data = None
+                        st.session_state.recommendations = None
+                        st.session_state.active_review = None
+                        st.session_state.judge_eval = None
+                        st.session_state.chat_results = None
+                        st.success("All data has been reset!")
+                        st.rerun()
+                    else:
+                        st.error(f"Reset failed: {r.text}")
+                except Exception as e:
+                    st.error(f"Connection error: {e}")
+        with col2:
+            if st.button("🆕 Start Fresh Session", use_container_width=True):
+                new_sid = str(uuid.uuid4())
+                st.session_state.session_id = new_sid
+                st.session_state.profile_data = None
+                st.session_state.recommendations = None
+                st.session_state.active_review = None
+                st.session_state.judge_eval = None
+                st.session_state.chat_results = None
+                st.query_params["sid"] = new_sid
+                st.rerun()
 
-    # --- RESET ALL DATA ---
-    st.header("🗑️ Reset All Data")
-    st.warning("This will permanently delete your profile, watchlist, and all reviews for this session.")
-    col_reset, col_space = st.columns([1, 3])
-    with col_reset:
-        if st.button("🔴 Reset Everything", type="primary", use_container_width=True):
-            try:
-                r = requests.delete(f"{API_URL}/reset/{st.session_state.session_id}")
-                if r.status_code == 200:
-                    st.session_state.profile_data = None
-                    st.session_state.recommendations = None
-                    st.session_state.active_review = None
-                    st.session_state.judge_eval = None
-                    st.session_state.chat_results = None
-                    st.success("All data has been reset! Refreshing...")
-                    st.rerun()
-                else:
-                    st.error(f"Reset failed: {r.text}")
-            except Exception as e:
-                st.error(f"Connection error: {e}")
-
-    st.markdown("---")
-
-    # --- START A BRAND NEW SESSION ---
-    st.header("🆕 Start Fresh Session")
-    st.info("This creates a new empty session. Your old data still exists under the previous session link.")
-    if st.button("Start New Session"):
-        new_sid = str(uuid.uuid4())
-        st.session_state.session_id = new_sid
-        st.session_state.profile_data = None
-        st.session_state.recommendations = None
-        st.session_state.active_review = None
-        st.session_state.judge_eval = None
-        st.session_state.chat_results = None
-        st.query_params["sid"] = new_sid
-        st.rerun()
-
-# ----------------------------------------------------
-# GLOBAL AGENT SEARCH BAR (Appears Universal)
-# ----------------------------------------------------
+# =====================================================================
+# GLOBAL AI SEARCH BAR
+# =====================================================================
 st.markdown("<br><br>", unsafe_allow_html=True)
 search_query = st.chat_input("Ask Reelogue AI for movies by director, actor, genre, or mood...")
 
