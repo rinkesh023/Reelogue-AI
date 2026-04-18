@@ -12,7 +12,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from memory.db import init_db, add_to_watchlist, get_watchlist, remove_from_watchlist, add_user_review, get_user_reviews
+from memory.db import (
+    init_db, add_to_watchlist, get_watchlist, remove_from_watchlist,
+    add_user_review, get_user_reviews, save_user_profile, load_user_profile,
+    reset_session_data
+)
 from agents.recommendation_agent import get_recommendations
 from agents.review_agent import review_movie
 from agents.judge_agent import evaluate_review
@@ -35,8 +39,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory session store (use Redis/Supabase in production)
+# In-memory session cache — backed by SQLite for persistence
 sessions: dict[str, UserProfile] = {}
+
+
+def _get_profile(session_id: str) -> UserProfile | None:
+    """Get profile from cache, falling back to SQLite."""
+    if session_id in sessions:
+        return sessions[session_id]
+    # Try loading from database
+    data = load_user_profile(session_id)
+    if data:
+        profile = UserProfile(
+            name=data.get("name", ""),
+            favourite_genres=data.get("favourite_genres", []),
+            favourite_films=data.get("favourite_films", []),
+            favourite_directors=data.get("favourite_directors", []),
+            mood=data.get("mood", ""),
+            viewing_context=data.get("viewing_context", ""),
+            content_type=data.get("content_type", "both"),
+            language_preference=data.get("language_preference", []),
+            disliked_genres=data.get("disliked_genres", []),
+            streaming_services=data.get("streaming_services", []),
+        )
+        sessions[session_id] = profile
+        return profile
+    return None
 
 
 class ProfileInput(BaseModel):
@@ -86,7 +114,7 @@ class WatchlistInput(BaseModel):
 
 @app.post("/profile")
 def create_profile(data: ProfileInput):
-    """Create or update a user taste profile."""
+    """Create or update a user taste profile (persisted to SQLite)."""
     profile = UserProfile(
         name=data.name,
         favourite_genres=data.favourite_genres,
@@ -100,14 +128,36 @@ def create_profile(data: ProfileInput):
         streaming_services=data.streaming_services,
     )
     sessions[data.session_id] = profile
+    # Persist to SQLite so it survives server restarts
+    save_user_profile(data.session_id, {
+        "name": data.name,
+        "favourite_genres": data.favourite_genres,
+        "favourite_films": data.favourite_films,
+        "favourite_directors": data.favourite_directors,
+        "mood": data.mood,
+        "viewing_context": data.viewing_context,
+        "content_type": data.content_type,
+        "language_preference": data.language_preference,
+        "disliked_genres": data.disliked_genres,
+        "streaming_services": data.streaming_services,
+    })
     return {"status": "ok", "session_id": data.session_id}
+
+
+@app.get("/profile/{session_id}")
+def get_profile(session_id: str):
+    """Load a persisted user profile by session ID."""
+    data = load_user_profile(session_id)
+    if data:
+        return {"profile": data}
+    raise HTTPException(status_code=404, detail="No saved profile found for this session.")
 
 
 @app.post("/recommendations")
 def recommendations(body: dict):
     """Get personalised recommendations for a session."""
     session_id = body.get("session_id")
-    profile = sessions.get(session_id)
+    profile = _get_profile(session_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Session not found. Create a profile first.")
 
@@ -123,7 +173,7 @@ def recommendations(body: dict):
 def review(req: ReviewRequest):
     """Get a full review for a specific title."""
     # Profile is optional — use blank profile if no session exists (e.g. chat_search flow)
-    profile = sessions.get(req.session_id) or UserProfile()
+    profile = _get_profile(req.session_id) or UserProfile()
 
     try:
         result = review_movie(req.title, req.year, profile)
@@ -148,7 +198,7 @@ def chat_search(req: SearchRequest):
 def judge(req: JudgeRequest):
     """Judge evaluation for an AI review."""
     try:
-        profile = sessions.get(req.session_id)
+        profile = _get_profile(req.session_id)
         result = evaluate_review(req.review_data, profile or UserProfile())
         return result
     except Exception as e:
@@ -160,7 +210,7 @@ def judge(req: JudgeRequest):
 @app.post("/rate")
 def rate(data: RatingInput):
     """Submit a rating to improve the user's taste profile."""
-    profile = sessions.get(data.session_id)
+    profile = _get_profile(data.session_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Session not found.")
 
@@ -185,7 +235,7 @@ def delete_watchlist(session_id: str, title: str):
 def submit_user_review(data: RatingInput):
     add_user_review(data.session_id, data.title, data.rating, data.feedback)
     # Also feed it to the AI agent taste profile logic
-    profile = sessions.get(data.session_id)
+    profile = _get_profile(data.session_id)
     if profile:
         profile.add_rating(data.title, data.rating, data.feedback)
     return {"status": "ok"}
@@ -193,6 +243,15 @@ def submit_user_review(data: RatingInput):
 @app.get("/user_reviews/{session_id}")
 def view_user_reviews(session_id: str):
     return {"reviews": get_user_reviews(session_id)}
+
+
+@app.delete("/reset/{session_id}")
+def reset_session(session_id: str):
+    """Wipe ALL data for a session: profile, watchlist, reviews."""
+    reset_session_data(session_id)
+    # Clear from in-memory cache too
+    sessions.pop(session_id, None)
+    return {"status": "ok", "message": "All data has been reset."}
 
 
 @app.get("/health")

@@ -26,9 +26,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- INIT SESSION STATE ---
-if "session_id" not in st.session_state:
-    st.session_state.session_id = str(uuid.uuid4())
+# --- INIT SESSION STATE (persistent across refreshes) ---
+# Use URL query params to keep session_id stable across page refreshes
+_params = st.query_params
+if "sid" in _params:
+    _session_id = _params["sid"]
+else:
+    _session_id = str(uuid.uuid4())
+    st.query_params["sid"] = _session_id
+
+if "session_id" not in st.session_state or st.session_state.session_id != _session_id:
+    st.session_state.session_id = _session_id
+
 if "profile_data" not in st.session_state:
     st.session_state.profile_data = None
 if "recommendations" not in st.session_state:
@@ -43,6 +52,15 @@ if "global_search_active" not in st.session_state:
     st.session_state.global_search_active = False
 if "chat_results" not in st.session_state:
     st.session_state.chat_results = None
+
+# --- RELOAD PROFILE FROM DB ON FRESH PAGE LOAD ---
+if st.session_state.profile_data is None:
+    try:
+        _r = requests.get(f"{API_URL}/profile/{st.session_state.session_id}")
+        if _r.status_code == 200:
+            st.session_state.profile_data = _r.json().get("profile")
+    except Exception:
+        pass  # Backend may not be running yet; silently continue
 
 GENRES_LIST = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", 
                "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", 
@@ -417,6 +435,55 @@ elif nav == "Settings":
                     st.error(f"Backend failed to save profile: {r.text}")
             except Exception as e:
                 st.error(f"Connection error: {e}")
+
+    st.markdown("---")
+
+    # --- SHARE SESSION (cross-device access) ---
+    st.header("📱 Access on Another Device")
+    st.write("Share this link to open your session (with all your data) on any device:")
+    _app_base_url = os.getenv("STREAMLIT_URL", "https://your-app-name.streamlit.app")
+    share_url = f"{_app_base_url}?sid={st.session_state.session_id}"
+    st.code(share_url, language=None)
+    st.caption("Anyone with this link can view and modify your watchlist & profile.")
+
+    st.markdown("---")
+
+    # --- RESET ALL DATA ---
+    st.header("🗑️ Reset All Data")
+    st.warning("This will permanently delete your profile, watchlist, and all reviews for this session.")
+    col_reset, col_space = st.columns([1, 3])
+    with col_reset:
+        if st.button("🔴 Reset Everything", type="primary", use_container_width=True):
+            try:
+                r = requests.delete(f"{API_URL}/reset/{st.session_state.session_id}")
+                if r.status_code == 200:
+                    st.session_state.profile_data = None
+                    st.session_state.recommendations = None
+                    st.session_state.active_review = None
+                    st.session_state.judge_eval = None
+                    st.session_state.chat_results = None
+                    st.success("All data has been reset! Refreshing...")
+                    st.rerun()
+                else:
+                    st.error(f"Reset failed: {r.text}")
+            except Exception as e:
+                st.error(f"Connection error: {e}")
+
+    st.markdown("---")
+
+    # --- START A BRAND NEW SESSION ---
+    st.header("🆕 Start Fresh Session")
+    st.info("This creates a new empty session. Your old data still exists under the previous session link.")
+    if st.button("Start New Session"):
+        new_sid = str(uuid.uuid4())
+        st.session_state.session_id = new_sid
+        st.session_state.profile_data = None
+        st.session_state.recommendations = None
+        st.session_state.active_review = None
+        st.session_state.judge_eval = None
+        st.session_state.chat_results = None
+        st.query_params["sid"] = new_sid
+        st.rerun()
 
 # ----------------------------------------------------
 # GLOBAL AGENT SEARCH BAR (Appears Universal)
