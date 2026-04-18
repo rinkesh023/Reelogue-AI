@@ -18,287 +18,12 @@ st.set_page_config(page_title="Reelogue", page_icon="🎬", layout="wide")
 # =====================================================================
 # PREMIUM CSS DESIGN SYSTEM
 # =====================================================================
-st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-/* ============ GLOBAL RESET & VARIABLES ============ */
-:root {
-    --bg-primary: #0B0E14;
-    --bg-surface: rgba(26, 29, 35, 0.6);
-    --bg-surface-solid: #1A1D23;
-    --accent: #8B5CF6;
-    --accent-glow: rgba(139, 92, 246, 0.4);
-    --accent-cyan: #06B6D4;
-    --accent-cyan-glow: rgba(6, 182, 212, 0.3);
-    --text-primary: #FFFFFF;
-    --text-secondary: #9CA3AF;
-    --text-muted: #6B7280;
-    --border-glass: rgba(255, 255, 255, 0.08);
-    --border-glow: rgba(139, 92, 246, 0.3);
-    --success: #10B981;
-    --warning: #F59E0B;
-    --danger: #EF4444;
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 20px;
-    --transition: cubic-bezier(0.4, 0, 0.2, 1);
-    --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-/* ============ BASE STYLES ============ */
-p, span, li, div {
-    font-family: var(--font) !important;
-}
-
-/* ============ TYPOGRAPHY ============ */
-h1, h2, h3, h4, h5, h6, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
-    font-family: var(--font) !important;
-    letter-spacing: -0.02em !important;
-}
-
-/* ============ BUTTONS — PREMIUM ============ */
-.stButton > button {
-    background: linear-gradient(135deg, var(--accent) 0%, #7C3AED 100%) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: var(--radius-md) !important;
-    padding: 10px 24px !important;
-    font-family: var(--font) !important;
-    font-weight: 600 !important;
-    font-size: 14px !important;
-    letter-spacing: 0.01em !important;
-    transition: all 0.3s var(--transition) !important;
-    box-shadow: 0 4px 15px var(--accent-glow) !important;
-    position: relative;
-    overflow: hidden;
-}
-
-.stButton > button:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 25px var(--accent-glow) !important;
-}
-
-.stButton > button:active {
-    transform: translateY(0) !important;
-}
-
-/* Secondary/outline buttons */
-.stButton > button[kind="secondary"] {
-    background: transparent !important;
-    border: 1px solid var(--border-glass) !important;
-    color: var(--text-secondary) !important;
-    box-shadow: none !important;
-}
-
-.stButton > button[kind="secondary"]:hover {
-    border-color: var(--accent) !important;
-    color: var(--text-primary) !important;
-    background: rgba(139, 92, 246, 0.08) !important;
-}
-
-/* Button shimmer animation */
-@keyframes shimmer {
-    0% { background-position: -200% center; }
-    100% { background-position: 200% center; }
-}
-
-.stButton > button::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-    background-size: 200% 100%;
-    animation: shimmer 5s ease-in-out infinite;
-    pointer-events: none;
-}
-
-/* ============ IMAGES — MOVIE POSTER CARDS ============ */
-[data-testid="stImage"] img {
-    border-radius: var(--radius-lg) !important;
-    transition: all 0.35s var(--transition) !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
-}
-
-[data-testid="stImage"]:hover img {
-    transform: scale(1.04) !important;
-    box-shadow: 0 12px 40px rgba(139, 92, 246, 0.15) !important;
-}
-
-/* ============ SCROLLBAR ============ */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-    background: rgba(139, 92, 246, 0.3);
-    border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.5); }
-
-/* ============ ANIMATIONS ============ */
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes meshGradient {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
-.stColumn > div {
-    animation: fadeInUp 0.5s var(--transition) both;
-}
-
-.stColumn:nth-child(1) > div { animation-delay: 0ms; }
-.stColumn:nth-child(2) > div { animation-delay: 50ms; }
-.stColumn:nth-child(3) > div { animation-delay: 100ms; }
-.stColumn:nth-child(4) > div { animation-delay: 150ms; }
-.stColumn:nth-child(5) > div { animation-delay: 200ms; }
-
-/* ============ SPINNER ============ */
-.stSpinner > div {
-    border-top-color: var(--accent) !important;
-}
-
-/* ============ HIDE STREAMLIT DEFAULTS ============ */
-#MainMenu { visibility: hidden; }
-footer { visibility: hidden; }
-header[data-testid="stHeader"] {
-    background: rgba(11, 14, 20, 0.8) !important;
-    backdrop-filter: blur(16px) !important;
-}
-
-/* ============ CUSTOM COMPONENT CLASSES ============ */
-.greeting-banner {
-    background: linear-gradient(-45deg, #0B0E14, #1a1040, #0d2137, #0B0E14);
-    background-size: 400% 400%;
-    animation: meshGradient 12s ease infinite;
-    border-radius: var(--radius-xl);
-    padding: 40px 36px;
-    margin-bottom: 32px;
-    border: 1px solid var(--border-glass);
-}
-
-.greeting-banner h2 {
-    margin: 0 0 8px 0 !important;
-    font-size: 1.8rem !important;
-    background: linear-gradient(135deg, #fff 0%, #c4b5fd 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.greeting-banner p {
-    color: var(--text-secondary) !important;
-    font-size: 15px;
-    margin: 0;
-}
-
-.logo-text {
-    font-family: var(--font) !important;
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-cyan) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    padding-bottom: 20px;
-}
-
-.user-card {
-    background: var(--bg-surface);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--border-glass);
-    padding: 14px 16px;
-    border-radius: var(--radius-lg);
-    display: flex;
-    align-items: center;
-    margin-bottom: 28px;
-    transition: all 0.3s var(--transition);
-}
-
-.user-card:hover {
-    border-color: rgba(139, 92, 246, 0.2);
-}
-
-.user-avatar {
-    background: linear-gradient(135deg, var(--accent), #7C3AED);
-    color: white;
-    border-radius: 50%;
-    width: 42px; height: 42px;
-    display: flex; justify-content: center; align-items: center;
-    font-weight: 700; font-size: 18px;
-    margin-right: 14px;
-    flex-shrink: 0;
-}
-
-.user-info-name {
-    color: var(--text-primary);
-    font-weight: 600;
-    font-size: 15px;
-}
-
-.user-info-status {
-    color: var(--accent-cyan);
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.score-radial {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-}
-
-.score-radial svg { filter: drop-shadow(0 0 6px var(--accent-glow)); }
-
-.badge-best {
-    display: inline-block;
-    background: rgba(16, 185, 129, 0.12);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    color: #34D399;
-    padding: 10px 18px;
-    border-radius: 50px;
-    font-size: 14px;
-    font-weight: 500;
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
-    line-height: 1.5;
-}
-
-.badge-avoid {
-    display: inline-block;
-    background: rgba(239, 68, 68, 0.12);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #F87171;
-    padding: 10px 18px;
-    border-radius: 50px;
-    font-size: 14px;
-    font-weight: 500;
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.1);
-    line-height: 1.5;
-}
-
-.section-label {
-    color: var(--text-muted);
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    margin-bottom: 12px;
-}
-
-.movie-card-overlay {
-    position: relative;
-    overflow: hidden;
-    border-radius: var(--radius-lg);
-    transition: transform 0.3s var(--transition);
-}
-
-.movie-card-overlay:hover { transform: scale(1.05); }
-
-</style>
-""", unsafe_allow_html=True)
+st.markdown('<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">', unsafe_allow_html=True)
+try:
+    with open("static/style.css", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+except Exception:
+    pass
 
 # =====================================================================
 # INIT SESSION STATE (persistent across refreshes)
@@ -435,6 +160,13 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     
     nav = st.radio("MENU", ["Home", "Reelogue AI", "Watchlist", "My Reviews", "Settings"], label_visibility="hidden")
+
+    # Clear global search if user clicks a different nav item
+    if "last_nav" not in st.session_state:
+        st.session_state.last_nav = nav
+    if nav != st.session_state.last_nav:
+        st.session_state.global_search_active = False
+        st.session_state.last_nav = nav
 
 
 # =====================================================================
@@ -805,54 +537,45 @@ elif nav == "Settings":
             except Exception as e:
                 st.error(f"Connection error: {e}")
 
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- SHARE SESSION ---
-    st.markdown('<div class="section-label">Access on Another Device</div>', unsafe_allow_html=True)
-    st.write("Share this link to access your session from any device:")
-    _app_base_url = os.getenv("STREAMLIT_URL", "https://your-app-name.streamlit.app")
-    share_url = f"{_app_base_url}?sid={st.session_state.session_id}"
-    st.code(share_url, language=None)
-    st.caption("Anyone with this link can view and modify your watchlist & profile.")
+    with st.expander("📱 Cross-Device Access"):
+        st.write("Share this link to access your session from any device:")
+        _app_base_url = os.getenv("STREAMLIT_URL", "https://your-app-name.streamlit.app")
+        share_url = f"{_app_base_url}?sid={st.session_state.session_id}"
+        st.code(share_url, language=None)
+        st.caption("Anyone with this link can view and modify your watchlist & profile.")
 
-    st.markdown("---")
-
-    # --- RESET ---
-    st.markdown('<div class="section-label">Danger Zone</div>', unsafe_allow_html=True)
-    st.warning("This will permanently delete your profile, watchlist, and all reviews.")
-    col_reset, col_space = st.columns([1, 3])
-    with col_reset:
-        if st.button("🔴 Reset Everything", type="primary", use_container_width=True):
-            try:
-                r = requests.delete(f"{API_URL}/reset/{st.session_state.session_id}")
-                if r.status_code == 200:
-                    st.session_state.profile_data = None
-                    st.session_state.recommendations = None
-                    st.session_state.active_review = None
-                    st.session_state.judge_eval = None
-                    st.session_state.chat_results = None
-                    st.success("All data has been reset!")
-                    st.rerun()
-                else:
-                    st.error(f"Reset failed: {r.text}")
-            except Exception as e:
-                st.error(f"Connection error: {e}")
-
-    st.markdown("---")
-
-    # --- NEW SESSION ---
-    st.markdown('<div class="section-label">Start Fresh</div>', unsafe_allow_html=True)
-    st.info("Creates a new empty session. Your old data still exists under the previous session link.")
-    if st.button("🆕 Start New Session"):
-        new_sid = str(uuid.uuid4())
-        st.session_state.session_id = new_sid
-        st.session_state.profile_data = None
-        st.session_state.recommendations = None
-        st.session_state.active_review = None
-        st.session_state.judge_eval = None
-        st.session_state.chat_results = None
-        st.query_params["sid"] = new_sid
-        st.rerun()
+    with st.expander("⚠️ Advanced Options (Reset & New Session)"):
+        st.warning("These actions will affect your current session data permanently.")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔴 Delete All Data", type="primary", use_container_width=True):
+                try:
+                    r = requests.delete(f"{API_URL}/reset/{st.session_state.session_id}")
+                    if r.status_code == 200:
+                        st.session_state.profile_data = None
+                        st.session_state.recommendations = None
+                        st.session_state.active_review = None
+                        st.session_state.judge_eval = None
+                        st.session_state.chat_results = None
+                        st.success("All data has been reset!")
+                        st.rerun()
+                    else:
+                        st.error(f"Reset failed: {r.text}")
+                except Exception as e:
+                    st.error(f"Connection error: {e}")
+        with col2:
+            if st.button("🆕 Start Fresh Session", use_container_width=True):
+                new_sid = str(uuid.uuid4())
+                st.session_state.session_id = new_sid
+                st.session_state.profile_data = None
+                st.session_state.recommendations = None
+                st.session_state.active_review = None
+                st.session_state.judge_eval = None
+                st.session_state.chat_results = None
+                st.query_params["sid"] = new_sid
+                st.rerun()
 
 # =====================================================================
 # GLOBAL AI SEARCH BAR
