@@ -8,14 +8,16 @@ from tools.omdb_fetch import fetch_omdb_data
 from tools.watchmode_fetch import get_watchmode_streaming_sources
 from memory.user_profile import UserProfile
 
-REVIEW_SYNTHESIS_SYSTEM = """You are Reelogue's expert review synthesiser — like a knowledgeable film critic friend.
+REVIEW_SYNTHESIS_SYSTEM = """You are Reelogue's expert review synthesiser — a deeply analytical and knowledgeable film critic friend.
 
-Given raw review data scraped from multiple sources, produce a structured JSON analysis.
-Return ONLY valid JSON, no other text:
+Read the raw review data and produce a structured JSON analysis.
+DO NOT provide minimal one-liners. Provide detailed, expressive, and substantial 3-4 sentence paragraphs that truly capture the film's essence, critical nuances, and real web-based audience reception.
+
+Return ONLY valid JSON:
 
 {
-  "verdict": "2-3 punchy, evocative sentences providing a definitive and highly detailed verdict on the movie based on all gathered data.",
-  "summary": "5-6 sentences synthesising what critics and audiences agree/disagree on, giving deeply comprehensive context.",
+  "verdict": "3-4 punchy, evocative sentences providing a definitive and highly detailed final verdict. Dive into what makes it special.",
+  "summary": "At least 4-5 sentences synthesising the plot and the overarching reaction. Be specific about the cinematography, acting, or directing.",
   "scores": {
     "imdb": "7.8/10",
     "rotten_tomatoes_critics": "94%",
@@ -23,17 +25,18 @@ Return ONLY valid JSON, no other text:
     "metacritic": "82/100",
     "letterboxd": "4.1/5"
   },
-  "critic_consensus": "What critics universally praise or criticise",
-  "audience_take": "How general audiences feel vs critics",
-  "best_for": "Who will love this film (e.g. 'fans of slow-burn psychological thrillers')",
-  "avoid_if": "Who should skip it",
-  "taste_match_note": "Personalised note about why this matches (or doesn't) the user's taste",
+  "critic_consensus": "A substantial 3-sentence summary of what professional critics universally praised or heavily criticised. Be highly specific.",
+  "audience_take": "A substantial 3-sentence summary of how general web audiences feel vs critics. Mention real points of enjoyment or boredom.",
+  "best_for": "Be specific (e.g. 'Fans of slow-burn, psychological A24-style thrillers who love deep character studies')",
+  "avoid_if": "Be specific (e.g. 'Viewers looking for rapid-action or those who hate ambiguous endings')",
+  "taste_match_note": "A deeply personalised 2-sentence note about why this matches (or completely misses) the user's taste preferences.",
   "reelogue_rating": 8.4
 }
 
-reelogue_rating is your own weighted score (0-10) considering all sources.
-Be honest — not every film is a 9/10. Use decimal precision.
-Fill scores with 'N/A' if data was not found."""
+Important Rules:
+1. reelogue_rating is your own weighted score (0.0-10.0). Not every film is a 9/10. Use decimal precision.
+2. If data is missing for a score, fill it with 'N/A'.
+3. Your text MUST be high effort, cinematic, and detailed. Do NOT be lazy."""
 
 def review_movie(title: str, year: str, profile: UserProfile) -> dict:
     print(f"  [1-3/4] Parallel processing APIs (TMDB, OMDb, Tavily, Watchmode)...")

@@ -228,7 +228,9 @@ def render_full_review_ui(review, is_search=False):
     cols = st.columns(5)
     for idx, (label, val, mx) in enumerate(score_items):
         with cols[idx]:
-            display_val = f"{val}/{mx}" if str(val) != "N/A" and "%" not in str(val) else str(val)
+            display_val = str(val)
+            if display_val != "N/A" and "%" not in display_val and "/" not in display_val:
+                display_val = f"{display_val}/{mx}"
             st.metric(label=label, value=display_val)
     
     st.markdown("---")
