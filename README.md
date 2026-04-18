@@ -7,6 +7,7 @@
 ![Gemini](https://img.shields.io/badge/Gemini-8E75B2?style=flat-square&logo=googlegemini&logoColor=white)
 ![Tavily](https://img.shields.io/badge/Tavily-4285F4?style=flat-square&logo=google&logoColor=white)
 ![TMDB](https://img.shields.io/badge/TMDB-01B4E4?style=flat-square&logo=themoviedatabase&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=white)
 
 Reelogue is a fully agentic application that acts as your personalized film critic and companion. By using conversational memory, massive-scale parallel searching, and LLM-as-judge self-correction, Reelogue curates and verifies the best cinema picks mapped directly to your specific tastes.
 
@@ -18,6 +19,9 @@ Reelogue is a fully agentic application that acts as your personalized film crit
 - **LLM-as-Judge quality evaluation:** Self-checks AI verdicts against a 5-point rigorous rubric.
 - **Streaming availability lookup:** Detects where the film can be currently watched.
 - **Movie poster display:** Connects metadata pipelines to fetch stunning poster visuals.
+- **Persistent storage:** Cloud-backed Supabase PostgreSQL database — watchlists, profiles, and reviews survive across refreshes, deploys, and devices.
+- **Cross-device sessions:** Shareable session links let you access your data from any device.
+- **Conversational search:** Ask Reelogue AI to find movies by director, actor, genre, or mood.
 
 ## Tech Stack
 
@@ -31,7 +35,8 @@ Reelogue is a fully agentic application that acts as your personalized film crit
 | **Movie Data** | TMDB | Metadata engine for basic film facts and posters. |
 | **Review Data** | OMDb | Fast baseline score fallback and API metrics. |
 | **Streaming** | Watchmode API | Reliable lookup for streaming platforms globally. |
-| **Deployment**| Render.com | Scalable hosting backend for the FastAPI architecture. |
+| **Database** | Supabase (PostgreSQL) | Cloud-persistent storage for profiles, watchlists, and reviews. |
+| **Deployment** | Render + Streamlit Cloud | Backend API on Render, frontend on Streamlit Community Cloud. |
 
 ## Hybrid Architecture
 
@@ -69,21 +74,22 @@ Reelogue is a fully agentic application that acts as your personalized film crit
 ├── PROBLEM_STATEMENT.md
 ├── README.md
 ├── TASK_DECOMPOSITION.md
+├── supabase_setup.sql          # Run in Supabase SQL Editor to create tables
 ├── agents/
 │   ├── __init__.py
+│   ├── chat_search_agent.py    # Conversational movie search agent
 │   ├── judge_agent.py
 │   ├── onboarding_agent.py
 │   ├── recommendation_agent.py
 │   └── review_agent.py
-├── api.py
-├── check_models.py
-├── frontend/
-├── main.py
+├── api.py                      # FastAPI backend
+├── main.py                     # CLI entry point
 ├── memory/
 │   ├── __init__.py
+│   ├── db.py                   # Dual-backend: Supabase (cloud) / SQLite (local)
 │   └── user_profile.py
 ├── requirements.txt
-├── streamlit_app.py
+├── streamlit_app.py            # Streamlit frontend
 ├── static/
 └── tools/
     ├── __init__.py
@@ -110,8 +116,21 @@ Reelogue is a fully agentic application that acts as your personalized film crit
    cp .env.example .env
    ```
    *Fill the `.env` with your active keys based on the API list below.*
-4. **Run the Application:**
+
+4. **Set up the Database:**
+   - **For local development:** No setup needed — SQLite is used automatically.
+   - **For production (Supabase):**
+     1. Create a free project at [supabase.com](https://supabase.com)
+     2. Go to **SQL Editor** → run the contents of `supabase_setup.sql`
+     3. Copy your **Project URL** and **anon key** from **Settings → API**
+     4. Add `SUPABASE_URL` and `SUPABASE_KEY` to your `.env` file
+
+5. **Run the Application:**
    ```bash
+   # Start the FastAPI backend
+   uvicorn api:app --reload
+
+   # In another terminal, start the Streamlit frontend
    streamlit run streamlit_app.py
    ```
 
@@ -125,6 +144,8 @@ Reelogue is a fully agentic application that acts as your personalized film crit
 | `TMDB_API_KEY` | [TMDB Developer](https://developer.themoviedb.org/) | 50 requests/sec |
 | `OMDB_API_KEY` | [OMDb API](http://www.omdbapi.com/apikey.aspx) | 1,000 requests/day |
 | `WATCHMODE_API_KEY` | [Watchmode Settings](https://v2.watchmode.com/settings/) | 1,000 requests/month |
+| `SUPABASE_URL` | [Supabase Dashboard](https://supabase.com) → Settings → API | Free (500 MB storage) |
+| `SUPABASE_KEY` | [Supabase Dashboard](https://supabase.com) → Settings → API | (anon/public key) |
 
 ## How It Works
 
@@ -145,11 +166,21 @@ The internal verification step forces Gemini to behave as an auditor over its ow
 
 ## Deployment
 
-**Streamlit Community Cloud (Recommended):**
-Link your GitHub repo to Streamlit for near instant deployment at absolutely zero cost. Streamlit automatically detects the `requirements.txt` file and sets the build commands. Securely inject your Secrets in the Streamlit Dashboard.
+**Backend (Render):**
+1. Connect your GitHub repo to [Render](https://render.com)
+2. Set **Build Command:** `pip install -r requirements.txt`
+3. Set **Start Command:** `uvicorn api:app --host 0.0.0.0 --port $PORT`
+4. Add all environment variables (API keys + `SUPABASE_URL` + `SUPABASE_KEY`)
 
-**Railway for FastAPI:**
-Should you extend Reelogue off the Streamlit frontend to operate strictly via the `api.py` endpoint, deploy simply to Railway using Docker or local environment mapping tools.
+**Frontend (Streamlit Community Cloud):**
+1. Link your GitHub repo at [share.streamlit.io](https://share.streamlit.io)
+2. Set main file to `streamlit_app.py`
+3. Add secrets: all API keys + `SUPABASE_URL`, `SUPABASE_KEY`, `API_URL` (your Render URL), `STREAMLIT_URL`
+
+**Database (Supabase):**
+1. Create a free project at [supabase.com](https://supabase.com)
+2. Run `supabase_setup.sql` in the SQL Editor
+3. Use the Project URL and anon key as env vars above
 
 ## Live Demo
 - **Live app:** [your-app.streamlit.app]
