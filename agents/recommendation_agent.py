@@ -52,11 +52,8 @@ Suggest 10 personalised recommendations as JSON."""
         import concurrent.futures
         
         def assign_poster(r):
-            omdb_info = fetch_omdb_data(r.get("title"), str(r.get("year", "")))
-            if omdb_info and omdb_info.get("Poster") and omdb_info.get("Poster") != "N/A":
-                r["poster_url"] = omdb_info.get("Poster").replace("http://", "https://")
-            else:
-                r["poster_url"] = "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80"
+            from tools.image_fetcher import get_best_poster
+            r["poster_url"] = get_best_poster(r.get("title"), str(r.get("year", "")))
             return r
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:

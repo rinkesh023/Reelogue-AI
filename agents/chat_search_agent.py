@@ -55,29 +55,8 @@ def get_chat_search_results(query: str) -> list:
         recs = json.loads(raw)
         
         def assign_poster(r):
-            title = r.get("title", "")
-            year = str(r.get("year", ""))
-            poster = None
-            
-            # Try OMDb first
-            try:
-                omdb_info = fetch_omdb_data(title, year)
-                if omdb_info and omdb_info.get("Poster") and omdb_info.get("Poster") != "N/A":
-                    poster = omdb_info.get("Poster").replace("http://", "https://")
-            except Exception:
-                pass
-            
-            # Fallback to TMDB if OMDb returned nothing
-            if not poster:
-                try:
-                    from tools.tmdb_fetch import fetch_tmdb_data
-                    tmdb_info = fetch_tmdb_data(title, year)
-                    if tmdb_info and tmdb_info.get("poster_url"):
-                        poster = tmdb_info["poster_url"]
-                except Exception:
-                    pass
-            
-            r["poster_url"] = poster or "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80"
+            from tools.image_fetcher import get_best_poster
+            r["poster_url"] = get_best_poster(r.get("title", ""), str(r.get("year", "")))
             return r
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
