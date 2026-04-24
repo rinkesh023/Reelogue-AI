@@ -188,7 +188,7 @@ The internal verification step forces Gemini to behave as an auditor over its ow
 
 ## Live Demo
 - **Live app:** [https://reelogue-ai.streamlit.app/]
-- **Demo video:** [Loom link]
+- **Demo video:** [https://www.loom.com/share/50d93948355f483987fdf5ace5a222b1?t=201]
 
 ## Team
 - **Role A (Architect & Integrator):** Project framework and API management.
