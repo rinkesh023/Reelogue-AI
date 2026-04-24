@@ -1,11 +1,13 @@
 import os
+from functools import lru_cache
 from tools.omdb_fetch import fetch_omdb_data
 from tools.tmdb_fetch import fetch_tmdb_data
 
 DEFAULT_POSTER = "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80"
 
+@lru_cache(maxsize=128)
 def get_best_poster(title: str, year: str) -> str:
-    """Centralized logic to fetch the best available poster."""
+    """Centralized logic to fetch the best available poster with caching."""
     # 1. Try TMDB (which now includes Fanart.tv if available)
     try:
         tmdb_info = fetch_tmdb_data(title, year)

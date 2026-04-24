@@ -59,7 +59,7 @@ def get_chat_search_results(query: str) -> list:
             r["poster_url"] = get_best_poster(r.get("title", ""), str(r.get("year", "")))
             return r
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             recs = list(executor.map(assign_poster, recs))
             
         return recs
