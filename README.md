@@ -18,7 +18,7 @@ Reelogue is a fully agentic application that acts as your personalized film crit
 - **AI-synthesised verdict:** Rewrites overwhelming amounts of reviews into clean, readable judgements.
 - **LLM-as-Judge quality evaluation:** Self-checks AI verdicts against a 5-point rigorous rubric.
 - **Streaming availability lookup:** Detects where the film can be currently watched.
-- **Movie poster display:** Connects metadata pipelines to fetch stunning poster visuals.
+- **Movie poster display:** Connects metadata pipelines to fetch stunning poster visuals, prioritized with high-quality sources from Fanart.tv.
 - **Persistent storage:** Cloud-backed Supabase PostgreSQL database — watchlists, profiles, and reviews survive across refreshes, deploys, and devices.
 - **Cross-device sessions:** Shareable session links let you access your data from any device.
 - **Conversational search:** Ask Reelogue AI to find movies by director, actor, genre, or mood.
@@ -33,37 +33,40 @@ Reelogue is a fully agentic application that acts as your personalized film crit
 | **AI Brain (Evaluation)** | Gemini 2.5 Flash | LLM-as-Judge executing rigorous audits against the user profile. |
 | **Search** | Tavily | Real-time scraper fetching web reviews across designated platforms. |
 | **Movie Data** | TMDB | Metadata engine for basic film facts and posters. |
+| **High-Res Posters** | Fanart.tv | Premium upscale posters for a better UI experience. |
 | **Review Data** | OMDb | Fast baseline score fallback and API metrics. |
 | **Streaming** | Watchmode API | Reliable lookup for streaming platforms globally. |
 | **Database** | Supabase (PostgreSQL) | Cloud-persistent storage for profiles, watchlists, and reviews. |
 | **Deployment** | Render + Streamlit Cloud | Backend API on Render, frontend on Streamlit Community Cloud. |
 
-## Hybrid Architecture
+## System Architecture
 
-```text
-       [ User Profile / Form Inputs ]
-                  |
-                  v
-+------------------------------------+
-| 1. Onboarding Agent (Groq Chat)    |
-+------------------------------------+
-                  | (Generates UserProfile)
-                  v
-+------------------------------------+
-| 2. Recommendation Agent (Groq)     |
-+------------------------------------+
-                  | (Outputs 10 Picks)
-                  v
-+------------------------------------+
-| 3. Review Agent (Groq Synthesis)   |
-|  -> Parallel Tools: TMDB, OMDb     |
-|  -> Parallel Tools: Tavily, Watch  |
-+------------------------------------+
-                  | (Produces Full Review)
-                  v
-+------------------------------------+
-| 4. Judge Agent (Gemini as Judge)   |
-+------------------------------------+
+```mermaid
+graph TD
+    User([User]) --> UI[Streamlit Frontend]
+    UI --> API[FastAPI Backend]
+    
+    subgraph "Agentic Layer"
+        API --> Onboarding[Onboarding Agent]
+        API --> Recs[Recommendation Agent]
+        API --> Review[Review Agent]
+        Review --> Judge[Judge Agent - LLM-as-Judge]
+    end
+    
+    subgraph "Data & Memory"
+        Onboarding --> DB[(Supabase / SQLite)]
+        Recs --> DB
+        Review --> Tools[Parallel Tools]
+    end
+    
+    subgraph "External APIs"
+        Tools --> Tavily[Tavily Search]
+        Tools --> TMDB[TMDB/Fanart.tv]
+        Tools --> Watchmode[Watchmode]
+    end
+    
+    Judge -- "Quality Check" --> Review
+    Review --> UI
 ```
 
 ## Project Structure
@@ -144,6 +147,7 @@ Reelogue is a fully agentic application that acts as your personalized film crit
 | `TMDB_API_KEY` | [TMDB Developer](https://developer.themoviedb.org/) | 50 requests/sec |
 | `OMDB_API_KEY` | [OMDb API](http://www.omdbapi.com/apikey.aspx) | 1,000 requests/day |
 | `WATCHMODE_API_KEY` | [Watchmode Settings](https://v2.watchmode.com/settings/) | 1,000 requests/month |
+| `FANART_TV_API_KEY` | [Fanart.tv API](https://fanart.tv/get-an-api-key/) | Personal use / Free |
 | `SUPABASE_URL` | [Supabase Dashboard](https://supabase.com) → Settings → API | Free (500 MB storage) |
 | `SUPABASE_KEY` | [Supabase Dashboard](https://supabase.com) → Settings → API | (anon/public key) |
 

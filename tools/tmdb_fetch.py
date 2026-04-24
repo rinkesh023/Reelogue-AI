@@ -54,9 +54,19 @@ def get_movie_details(tmdb_id: int, media_type: str = "movie") -> dict:
         print(f"Failed to fetch details from TMDB: {e}")
         return {}
 
-    # Build poster URL — use OMDb as proxy source to avoid India CDN geo-block
-    poster_path = details.get("poster_path")
-    poster_url = f"{TMDB_IMAGE_BASE}{poster_path}" if poster_path else None
+    # Build poster URL — prioritized Fanart.tv if available, else TMDB
+    try:
+        from tools.fanart_fetch import get_fanart_poster
+    except ImportError:
+        from .fanart_fetch import get_fanart_poster
+    
+    fanart_poster = get_fanart_poster(details.get("id"))
+    
+    if fanart_poster:
+        poster_url = fanart_poster
+    else:
+        poster_path = details.get("poster_path")
+        poster_url = f"{TMDB_IMAGE_BASE}{poster_path}" if poster_path else None
 
     return {
         "id": details.get("id"),

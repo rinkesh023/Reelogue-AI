@@ -28,15 +28,17 @@ except Exception:
 # =====================================================================
 # INIT SESSION STATE (persistent across refreshes)
 # =====================================================================
-_params = st.query_params
-if "sid" in _params:
-    _session_id = _params["sid"]
-else:
-    _session_id = str(uuid.uuid4())
-    st.query_params["sid"] = _session_id
+if "session_id" not in st.session_state:
+    _params = st.query_params
+    if "sid" in _params:
+        st.session_state.session_id = _params["sid"]
+    else:
+        st.session_state.session_id = str(uuid.uuid4())
+        st.query_params["sid"] = st.session_state.session_id
 
-if "session_id" not in st.session_state or st.session_state.session_id != _session_id:
-    st.session_state.session_id = _session_id
+# Ensure URL always has the sid
+if "sid" not in st.query_params or st.query_params["sid"] != st.session_state.session_id:
+    st.query_params["sid"] = st.session_state.session_id
 
 if "profile_data" not in st.session_state:
     st.session_state.profile_data = None
@@ -154,7 +156,7 @@ with st.sidebar:
         <div class="user-avatar">{char}</div>
         <div>
             <div class="user-info-name">{p_name}</div>
-            <div class="user-info-status">● Active Session</div>
+            <div class="user-info-status">● {st.session_state.session_id[:8]}...</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
