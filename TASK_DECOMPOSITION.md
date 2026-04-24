@@ -1,36 +1,39 @@
-# Task Decomposition & System Specification
+# Task Decomposition & System Specification: Reelogue AI
 
-Reelogue is broken down into modular, agent-driven tasks to ensure scalability and reliability.
+The Reelogue system is architected into five distinct task modules, each managed by a specialized agentic workflow.
 
-## 1. User Profiling & Memory (Onboarding)
-- **Task**: Capture user preferences (genres, films, mood, streaming services).
-- **Agent**: `Onboarding Agent`.
-- **Output**: A structured `UserProfile` object persisted in Supabase/SQLite.
+## Module 1: Persistent Onboarding & Memory
+- **Objective**: Construct a dynamic "Taste Profile" for the user.
+- **Sub-tasks**:
+    - Capture preferred genres, favorite/disliked films, and current mood.
+    - Persist profile data via Supabase (Cloud) or SQLite (Local).
+    - Generate a unique Session ID for cross-device synchronization.
 
-## 2. Multi-Vector Recommendation Generation
-- **Task**: Generate 5-10 highly relevant movie picks based on the user's Profile.
-- **Agent**: `Recommendation Agent`.
-- **Tools**: Groq (Llama 3.1) for rapid reasoning and pattern matching.
-- **Goal**: Provide a "match score" for each pick.
+## Module 2: Recommendation Orchestration
+- **Objective**: Generate 10 high-relevance candidates.
+- **Sub-tasks**:
+    - Query LLM (Groq Llama 3.1) with the user's Profile context.
+    - Calculate a "Match Score" (%) based on profile overlap.
+    - Output structured JSON to avoid parsing errors.
 
-## 3. Concurrent Data Aggregation
-- **Task**: Fetch metadata, reviews, and streaming info in parallel.
-- **Tools**: 
-    - `TMDB`: Basic metadata and high-res backdrops.
-    - `Fanart.tv`: Premium upscale posters.
-    - `Tavily`: Real-time web scraping of critical reviews.
-    - `Watchmode`: Streaming availability discovery.
+## Module 3: Parallel Data Fetching (The Toolset)
+- **Objective**: Aggregate metadata and high-res assets concurrently.
+- **Sub-tasks**:
+    - **TMDB & Fanart.tv**: Fetch high-resolution posters and basic metadata.
+    - **Tavily Search**: Scrape the web for critical consensus and specific review scores.
+    - **Watchmode**: Execute a global lookup for streaming availability.
+    - **Concurrency**: Use a ThreadPool (10 workers) to execute all fetches at once.
 
-## 4. Review Synthesis (The Critic)
-- **Task**: Condense hundreds of data points into a concise, readable review.
-- **Agent**: `Review Agent`.
-- **Output**: A structured JSON object containing verdict, scores, and streaming info.
+## Module 4: Synthesis & Verdict Generation
+- **Objective**: Turn raw data into a human-readable high-quality review.
+- **Sub-tasks**:
+    - Summarize multi-domain critical data (IMDb, RT, Metacritic).
+    - Map streaming locations to the user's specific subscriptions.
+    - Provide "Best For" and "Avoid If" logic for quick decision-making.
 
-## 5. Quality Assurance (LLM-as-Judge)
-- **Task**: Audit the synthesized review for accuracy and relevance.
-- **Agent**: `Judge Agent` (Gemini 2.5 Flash).
-- **Process**: Scores the review against a 5-point rubric and suggests improvements if scores are low.
-
-## 6. Premium Interface Delivery
-- **Task**: Render the data in a modern, dark-mode Streamlit dashboard.
-- **Features**: Horizontal scrolling, radial progress bars, and animated glassmorphism cards.
+## Module 5: Verification (LLM-as-Judge)
+- **Objective**: Perform a rigorous quality audit.
+- **Sub-tasks**:
+    - An independent agent (Gemini 2.5 Flash) audits the synthesis results.
+    - Evaluate across 5 key rubric points: Accuracy, Relevance, Synthesis Quality, Source Coverage, and Personalization.
+    - Block or flag outputs that fail to meet high-reliability standards.
