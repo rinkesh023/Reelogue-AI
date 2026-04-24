@@ -187,7 +187,7 @@ The internal verification step forces Gemini to behave as an auditor over its ow
 3. Use the Project URL and anon key as env vars above
 
 ## Live Demo
-- **Live app:** [your-app.streamlit.app]
+- **Live app:** [https://reelogue-ai.streamlit.app/]
 - **Demo video:** [Loom link]
 
 ## Team
