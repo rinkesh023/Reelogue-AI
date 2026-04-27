@@ -43,30 +43,35 @@ Reelogue is a fully agentic application that acts as your personalized film crit
 
 ```mermaid
 graph TD
-    User([User]) --> UI[Streamlit Frontend]
-    UI --> API[FastAPI Backend]
+    User([User]) <--> UI[Streamlit Frontend]
+    UI <--> API[FastAPI Backend]
     
     subgraph "Agentic Layer"
-        API --> Onboarding[Onboarding Agent]
         API --> Recs[Recommendation Agent]
+        API --> ChatSearch[Chat Search Agent]
         API --> Review[Review Agent]
-        Review --> Judge[Judge Agent - LLM-as-Judge]
+        API --> Judge[Judge Agent]
     end
     
-    subgraph "Data & Memory"
-        Onboarding --> DB[(Supabase / SQLite)]
-        Recs --> DB
-        Review --> Tools[Parallel Tools]
+    subgraph "Tools Layer (Parallel execution)"
+        Recs --> ImageFetcher[Image Fetcher]
+        ChatSearch --> ImageFetcher
+        Review --> Tavily[Tavily Search]
+        Review --> TMDB[TMDB API]
+        Review --> Fanart[Fanart.tv]
+        Review --> OMDb[OMDb API]
+        Review --> Watchmode[Watchmode API]
+        ImageFetcher --> TMDB
+        ImageFetcher --> Fanart
     end
     
-    subgraph "External APIs"
-        Tools --> Tavily[Tavily Search]
-        Tools --> TMDB[TMDB/Fanart.tv]
-        Tools --> Watchmode[Watchmode]
+    subgraph "Persistence"
+        API <--> Cache[In-Memory Session]
+        API <--> DB[(Supabase / SQLite)]
+        Cache -.-> DB
     end
     
-    Judge -- "Quality Check" --> Review
-    Review --> UI
+    Judge -. "Quality Check / Audits" .-> Review
 ```
 
 ## Project Structure
